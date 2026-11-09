@@ -1,0 +1,2 @@
+# 统一仓库内文本换行：避免 Windows 下 core.autocrlf 把 shebang 与 Markdown 转成 CRLF
+* text=auto eol=lf
