@@ -1,0 +1,66 @@
+name: 发布 npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # OIDC 可信发布必需，无需任何仓库 Secret
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false  # 零依赖项目，发布构建不启用缓存
+        # 不设置 registry-url：它会写入占位 _authToken，导致 npm 跳过 OIDC 交换
+
+      - name: 发布前置校验（环境 / tag / 元数据）
+        run: |
+          set -e
+          for f in .npmrc "$HOME/.npmrc"; do
+            if [ -f "$f" ] && grep -q '_authToken' "$f"; then
+              echo "::error::$f 存在 _authToken，会阻断 OIDC 可信发布"
+              exit 1
+            fi
+          done
+          node -e "const ge=(a,b)=>{const p=s=>s.split('.').map(Number),x=p(a),y=p(b);for(let i=0;i<3;i++)if(x[i]!==y[i])return x[i]>y[i];return true};for(const [k,c,m] of [['Node',process.versions.node,'22.14.0'],['npm',require('child_process').execSync('npm --version').toString().trim(),'11.5.1']]){console.log(k+' '+c+' (需 >= '+m+')');if(!ge(c,m)){console.error('::error::'+k+' 版本过低，OIDC 可信发布会失败');process.exit(1)}}"
+          node -e "const p=require('./package.json'),u=p.repository&&p.repository.url;if(!u||!u.includes('github.com/huazie/backlog-desk')){console.error('::error::package.json 缺少与仓库匹配的 repository.url，provenance 会失败');process.exit(1)}console.log('repository: '+u)"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF_NAME#v}"
+            PKG="$(node -p "require('./package.json').version")"
+            if [ "$TAG" != "$PKG" ]; then
+              echo "::error::tag v$TAG 与 package.json $PKG 不一致，拒绝发布"
+              exit 1
+            fi
+            echo "版本一致：$PKG"
+          fi
+
+      - name: 回归测试
+        run: npm test
+
+      - name: 核对发布清单
+        run: npm pack --dry-run
+
+      - name: 版本已发布则跳过
+        id: check
+        run: |
+          NAME="$(node -p "require('./package.json').name")"
+          VER="$(node -p "require('./package.json').version")"
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+            echo "::notice::$NAME@$VER 已发布，跳过"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 发布到 npm（OIDC 可信发布）
+        if: steps.check.outputs.skip != 'true'
+        run: npm publish --provenance --access public
