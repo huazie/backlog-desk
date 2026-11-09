@@ -1,0 +1,21 @@
+{
+  "port": 8787,
+  "syncToMemory": true,
+  "autoWatch": true,
+  "autoCalibrate": true,
+  "autoTask": true,
+  "agents": {
+    "workbuddy": {
+      "label": "WorkBuddy",
+      "memoryDir": ".workbuddy/memory",
+      "backlogFile": "改造清单.md",
+      "contextFiles": [
+        "MEMORY.md"
+      ],
+      "syncFile": "MEMORY.md",
+      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
+      "dailyFile": "{date}.md"
+    }
+  },
+  "projects": []
+}

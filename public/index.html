@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>改造清单台 · Backlog Desk</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">&#9670;</span>
+      <h1>改造清单台 · Backlog Desk</h1>
+      <span class="sub">读取各项目 Agent 记忆 · 双向自动跟踪</span>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="top-actions">
+      <button id="btn-refresh" class="btn ghost" title="从磁盘重新读取">刷新</button>
+      <button id="btn-project" class="btn">添加项目</button>
+      <button id="btn-agent" class="btn ghost">Agent 配置</button>
+      <button id="btn-track" class="btn ghost" title="自动跟踪设置">跟踪</button>
+      <button id="btn-theme" class="btn ghost" title="切换明暗">外观</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="rail">
+      <div class="rail-title">项目</div>
+      <div id="project-list"></div>
+      <div class="rail-foot">记忆根与代码根可不同</div>
+    </aside>
+
+    <main class="board">
+      <div class="board-head">
+        <div class="board-title-wrap">
+          <h2 id="board-title">—</h2>
+          <div class="path" id="board-path"></div>
+        </div>
+        <div class="filters">
+          <input id="q" type="search" placeholder="搜索改造项" autocomplete="off">
+          <select id="f-priority">
+            <option value="all">全部优先级</option>
+            <option value="P0">P0</option>
+            <option value="P1">P1</option>
+            <option value="P2">P2</option>
+            <option value="P3">P3</option>
+          </select>
+          <select id="f-status">
+            <option value="all">全部状态</option>
+            <option value="open">仅待处理</option>
+            <option value="todo">待办</option>
+            <option value="doing">进行中</option>
+            <option value="done">已完成</option>
+            <option value="removed">已移除</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="track-bar" class="track-bar" hidden></div>
+
+      <form id="add-form" class="add-form" autocomplete="off">
+        <input id="new-title" placeholder="改造项标题" required>
+        <select id="new-priority" data-p="P2" aria-label="优先级">
+          <option value="P0">P0</option>
+          <option value="P1">P1</option>
+          <option value="P2" selected>P2</option>
+          <option value="P3">P3</option>
+        </select>
+        <input id="new-note" placeholder="说明 / 决策依据（可选）">
+        <button type="submit" class="btn primary">添加</button>
+      </form>
+
+      <div class="table-wrap">
+        <table class="items">
+          <thead>
+            <tr>
+              <th class="c-id">#</th>
+              <th class="c-pri">优先级</th>
+              <th class="c-status">状态</th>
+              <th class="c-title">改造项</th>
+              <th class="c-note">说明 / 决策依据</th>
+              <th class="c-date">更新</th>
+              <th class="c-op"></th>
+            </tr>
+          </thead>
+          <tbody id="items-body"></tbody>
+        </table>
+        <div id="empty" class="empty" hidden>没有符合条件的改造项</div>
+      </div>
+
+      <section id="task-panel" class="task-panel" hidden>
+        <div class="task-head">
+          <h3>待派发 · Agent 任务卡</h3>
+          <span id="task-count" class="badge ro">0 张</span>
+        </div>
+        <div id="task-list"></div>
+        <div class="task-tip">手动派发：复制指令到 Agent 会话执行；工作台不会自动唤起 Agent、不会自动改代码或提交。执行完按约定只改清单里的 status / updated，看板会自动感知。</div>
+      </section>
+    </main>
+
+    <aside class="memory">
+      <div class="memory-head">
+        <h3>记忆速览</h3>
+        <div class="memory-actions">
+          <span class="badge ro" id="sync-badge">只读</span>
+          <button id="btn-resync" class="btn ghost" title="按当前清单校准长期笔记与当天日志">同步</button>
+        </div>
+      </div>
+      <div id="memory-body"></div>
+    </aside>
+  </div>
+
+  <div id="drawer" class="drawer" hidden>
+    <div class="drawer-mask" data-close></div>
+    <div class="drawer-panel">
+      <div class="drawer-head">
+        <h3 id="drawer-title">配置</h3>
+        <button class="btn ghost" data-close>关闭</button>
+      </div>
+      <div id="drawer-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

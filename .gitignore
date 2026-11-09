@@ -147,3 +147,19 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# ---- backlog-desk 项目规则 ----
+node_modules/
+backups/
+history.jsonl
+release/
+*.log
+*.tgz
+.env*
+
+# 本机开发配置（含真实项目绝对路径），不入库、不发布；克隆后由 bdesk init 或页面「添加项目」生成
+config/workbench.json
+
+# 仅忽略工作台自身的会话记忆目录；demo/ 下的示例记忆需随包入库
+/.workbuddy/
+!demo/config.json

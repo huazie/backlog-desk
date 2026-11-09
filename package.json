@@ -1,0 +1,35 @@
+{
+  "name": "backlog-desk",
+  "version": "1.0.0",
+  "description": "改造清单工作台 Backlog Desk：读取各项目 Agent 记忆目录下的改造清单，清单增删改即时写回，并双向自动跟踪改造推进",
+  "bin": {
+    "bdesk": "bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "server.js",
+    "public/",
+    "config/default.json",
+    "demo/",
+    "README.md",
+    "tests/"
+  ],
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/run.js",
+    "test:local": "node tests/smoke.js && node tests/sync-check.js && node tests/track-check.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "keywords": [
+    "backlog",
+    "todo",
+    "kanban",
+    "agent",
+    "memory",
+    "workbench",
+    "local-first"
+  ]
+}
