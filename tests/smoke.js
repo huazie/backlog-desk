@@ -176,7 +176,8 @@ async function mtimeOf(id) {
 
   const cfg = (await req('/api/state')).data.config;
   const badCfg = JSON.parse(JSON.stringify(cfg));
-  badCfg.agents.workbuddy.memoryDir = 'C:/Windows';
+  // 跨平台绝对路径：POSIX / win32 下 isAbsolute 均为 true，避免 CI 在 Ubuntu 上误判
+  badCfg.agents.workbuddy.memoryDir = path.resolve(process.cwd(), '..', 'outside');
   r = await req('/api/config', 'PUT', { config: badCfg });
   check('TC-017 Agent 绝对路径越界被拒绝',
     r.status === 400 && /相对路径/.test(r.data.error || ''), r.data.error);
