@@ -23,6 +23,11 @@ if (args.includes('--version') || args.includes('-v')) {
   process.exit(0);
 }
 
+if (args.includes('--help') || args.includes('-h')) {
+  usage();
+  process.exit(0);
+}
+
 function optsFromArgs() {
   const o = {};
   const port = opt('--port');
@@ -44,6 +49,15 @@ function cmdInit() {
   let cfg;
   if (from) {
     cfg = JSON.parse(fs.readFileSync(path.resolve(from), 'utf8'));
+    // 导入时把相对项目路径按当前目录解析成绝对，用户态配置不依赖启动 bdesk 时的 cwd
+    for (const p of cfg.projects || []) {
+      for (const k of ['projectRoot', 'memoryRoot']) {
+        const v = String(p[k] == null ? '' : p[k]);
+        if (v && !v.startsWith('~') && !path.isAbsolute(v) && !path.win32.isAbsolute(v)) {
+          p[k] = path.resolve(v);
+        }
+      }
+    }
     srv.validateConfig(cfg);
   } else {
     cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'default.json'), 'utf8'));
@@ -102,16 +116,24 @@ async function cmdDoctor() {
 
 function cmdDemo() {
   const demoDir = path.join(__dirname, '..', 'demo');
-  const dataDir = path.join(os.tmpdir(), `backlog-desk-demo-${process.pid}`);
-  fs.rmSync(dataDir, { recursive: true, force: true });
-  const tpl = JSON.parse(fs.readFileSync(path.join(demoDir, 'config.json'), 'utf8'));
-  const demoRoot = path.join(demoDir, 'projects').replace(/\\/g, '/');
-  const text = JSON.stringify(tpl).replace(/\{\{DEMO\}\}/g, demoRoot);
+  const dataDir = path.join(os.tmpdir(), 'backlog-desk-demo');
+  fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(path.join(dataDir, 'config.json'), JSON.stringify(JSON.parse(text), null, 2) + '\n', 'utf8');
+  // 示例复制到数据目录后再校准：包内 demo/ 始终只读，运行态只写临时副本
+  const demoRoot = path.join(dataDir, 'projects');
+  fs.cpSync(path.join(demoDir, 'projects'), demoRoot, { recursive: true });
+  // 在对象上替换占位符再交给 JSON.stringify：路径里的 $& / 引号 / 反斜杠都不会破坏配置
+  const expandDemo = v => {
+    if (typeof v === 'string') return v.split('{{DEMO}}').join(demoRoot.replace(/\\/g, '/'));
+    if (Array.isArray(v)) return v.map(expandDemo);
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, expandDemo(x)]));
+    return v;
+  };
+  const tpl = expandDemo(JSON.parse(fs.readFileSync(path.join(demoDir, 'config.json'), 'utf8')));
+  fs.writeFileSync(path.join(dataDir, 'config.json'), JSON.stringify(tpl, null, 2) + '\n', 'utf8');
   const port = Number(opt('--port')) || 8788;
   srv.start({ dataDir, port });
-  console.log('演示模式：数据全部来自包内 demo/ 示例目录，不会读写任何真实项目记忆。');
+  console.log('演示模式：示例项目已复制到临时目录，不读写包内 demo/ 与任何真实项目记忆。');
   // 示例镜像为静态占位，启动后自动按唯一权威源校准一次，让看板开箱即「一致」
   setTimeout(async () => {
     for (const id of (tpl.projects || []).map(p => p.id)) {
@@ -124,11 +146,31 @@ function usage() {
   console.log(`backlog-desk v${pkg.version} —— 改造清单台
 
 用法：
-  bdesk start [--port N] [--host H] [--config FILE] [--data-dir DIR]   启动看板（默认回环 8787）
-  bdesk init [--from FILE] [--data-dir DIR] [--force]                  生成用户态配置 ~/.backlog-desk/config.json
-  bdesk doctor [--config FILE] [--data-dir DIR]                        体检：项目路径 / 端口占用
-  bdesk demo [--port N]                                                用包内脱敏示例数据启动（零读写真实记忆）
-  bdesk --version                                                      版本号`);
+  bdesk [start] [选项]     启动看板（默认命令；127.0.0.1:8787，Ctrl+C 停止）
+  bdesk init [选项]        生成用户态配置 ~/.backlog-desk/config.json，已存在则不覆盖
+  bdesk doctor [选项]      体检：项目路径、清单文件、配置端口占用
+  bdesk demo [选项]        脱敏示例复制到临时目录启动（8788，包目录只读，不碰真实记忆）
+  bdesk help               显示本帮助（等价 -h / --help）
+  bdesk --version | -v     显示版本号
+
+选项（按命令标注生效范围）：
+  --port N         start / demo：服务端口（默认 8787 / demo 8788）
+  --host H         start：绑定地址（默认 127.0.0.1）
+  --config FILE    start / doctor：指定配置文件
+  --data-dir DIR   start / init / doctor：指定数据目录
+  --from FILE      init：从既有配置导入（相对路径展开为绝对）
+  --force          init：覆盖已存在的配置
+  --help | -h      显示本帮助
+  --version | -v   显示版本号
+
+环境变量：
+  PORT             start 的端口；端口取自 PORT 且未传 --host 时默认绑定 0.0.0.0
+  BACKLOG_HOME     start / init / doctor 的数据目录，默认 ~/.backlog-desk
+
+说明：
+  不带参数或只带选项（--help / -h / --version / -v 除外）时默认执行 start，
+  例如 bdesk --port 9000。start 端口优先级：--port > PORT > 配置 port > 8787。
+  未知命令同样打印本帮助，但退出码为 1。`);
 }
 
 switch (cmd) {

@@ -95,7 +95,10 @@ function createFixture(dataDir) {
     const mem = path.join(projectRoot, '.workbuddy', 'memory');
     fs.mkdirSync(mem, { recursive: true });
     const items = makeItems(s.id, s.count);
-    fs.writeFileSync(path.join(mem, '改造清单.md'), renderBacklog(s.name, items), 'utf8');
+    const backlog = renderBacklog(s.name, items);
+    // 前端项目清单故意用 CRLF：覆盖 Windows 真实记忆文件，验证写回不产生混合换行（TC-015）
+    fs.writeFileSync(path.join(mem, '改造清单.md'),
+      s.id === 'hexo-theme-diversity' ? backlog.replace(/\n/g, '\r\n') : backlog, 'utf8');
     fs.writeFileSync(path.join(mem, 'MEMORY.md'), renderMemory(s.name, items), 'utf8');
     for (const d of [...LEGACY_DATES, DATE]) {
       fs.writeFileSync(path.join(mem, `${d}.md`), renderDaily(d), 'utf8');

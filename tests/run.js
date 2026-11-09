@@ -64,7 +64,7 @@ function runScript(file, env) {
   // Ctrl+C 等中断时也别留下服务进程与临时目录
   const stop = () => {
     try { if (srv) srv.kill(); } catch (_) { /* 已退出 */ }
-    try { fs.rmSync(dataDir, { recursive: true, force: true }); } catch (_) { /* 已删除 */ }
+    try { fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch (_) { /* 已删除 */ }
   };
   process.on('SIGINT', () => { stop(); process.exit(130); });
   process.on('SIGTERM', () => { stop(); process.exit(143); });

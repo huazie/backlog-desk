@@ -183,6 +183,11 @@ async function mtimeOf(id) {
     r.status === 400 && /相对路径/.test(r.data.error || ''), r.data.error);
   check('TC-018 非法配置未落盘',
     (await req('/api/state')).data.config.agents.workbuddy.memoryDir === '.workbuddy/memory');
+  const winCfg = JSON.parse(JSON.stringify(cfg));
+  winCfg.agents.workbuddy.memoryDir = 'C:/Windows/Memory';
+  r = await req('/api/config', 'PUT', { config: winCfg });
+  check('TC-019 Windows 盘符绝对路径在任意平台均被拒绝',
+    r.status === 400 && /相对路径/.test(r.data.error || ''), r.data.error);
 
   const failed = results.filter(x => !x.ok).length;
   console.log(`\n结果：${results.length - failed}/${results.length} 通过`);

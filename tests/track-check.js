@@ -59,6 +59,16 @@ function ok(name, cond) {
 const read = f => fs.readFileSync(f, 'utf8');
 const sha = f => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
 const wait = ms => new Promise(r => setTimeout(r, ms));
+// watcher 去抖 500ms + 文件读写，慢 CI 上给足窗口；负向断言必须等这一段过去
+const SETTLE_WAIT = 1200;
+async function waitFor(predicate, timeoutMs = 6000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return true;
+    await wait(100);
+  }
+  return false;
+}
 
 function req(method, url, body) {
   return new Promise((resolve, reject) => {
@@ -128,13 +138,8 @@ function externalWrite(title) {
   fs.writeFileSync(f, text.slice(0, at) + row + text.slice(at), 'utf8');
 }
 function cleanupDir(dir) {
-  if (!fs.existsSync(dir)) return;
-  for (const n of fs.readdirSync(dir)) {
-    const f = path.join(dir, n);
-    if (fs.statSync(f).isDirectory()) cleanupDir(f);
-    else fs.unlinkSync(f);
-  }
-  fs.rmdirSync(dir);
+  // Windows 上 watcher 可能仍占着句柄，交给 rmSync 重试而不是逐个 unlink
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }
 
 (async () => {
@@ -166,7 +171,7 @@ function cleanupDir(dir) {
     const agentBefore = eventsOf('agent').length;
     let r = await mutate('POST', `/api/items/${TEST_ID}`, { title: '工作台新增项 B', priority: 'P1' });
     ok('工作台新增写回成功', r.status === 200 && r.data.items.length === 2);
-    await wait(900);
+    await wait(SETTLE_WAIT);
     ok('工作台自写未误判为外部改动（自写抑制）', eventsOf('agent').length === agentBefore);
     st = (await state()).data;
     ok('新增生成 1 张 pending 任务卡', st.tasks.length === 1 && st.tasks[0].status === 'pending');
@@ -201,7 +206,7 @@ function cleanupDir(dir) {
 
     // 6. SSE 连接
     sse = await openSSE();
-    await wait(200);
+    await waitFor(() => sse.chunks.join('').includes(': connected'), 3000);
     ok('SSE 通道建立成功', sse.status === 200 && sse.chunks.join('').includes(': connected'));
 
     // 7. Agent 直接改清单 → 自动感知 + 自动校准
@@ -209,7 +214,8 @@ function cleanupDir(dir) {
     const ctxBefore = read(ctxPath);
     const logBefore = read(logPath);
     externalWrite('Agent 外部新增项 C');
-    await wait(1100);
+    await waitFor(() => eventsOf('agent', 'external-change').length > agentEventsBefore &&
+      read(ctxPath).includes('Agent 外部新增项 C'));
     const agentEvents = eventsOf('agent', 'external-change');
     ok('Agent 外部改动被识别为 1 条 source:agent 事件',
       agentEvents.length === agentEventsBefore + 1, `新增 ${agentEvents.length - agentEventsBefore} 条`);
@@ -232,7 +238,7 @@ function cleanupDir(dir) {
     const cnt = eventsOf('agent', 'external-change').length;
     const text = read(backlogPath);
     fs.writeFileSync(backlogPath, text, 'utf8');
-    await wait(900);
+    await wait(SETTLE_WAIT);
     ok('相同内容重复写盘不重复记事件（去重）', eventsOf('agent', 'external-change').length === cnt);
 
     // 9. 关闭自动校准：仍感知、不写记忆、标记漂移
@@ -241,7 +247,7 @@ function cleanupDir(dir) {
     const log3 = read(logPath);
     const ev3 = eventsOf('agent', 'external-change').length;
     externalWrite('关闭校准后的外部项 D');
-    await wait(1000);
+    await waitFor(() => eventsOf('agent', 'external-change').length > ev3);
     ok('关闭自动校准后仍感知外部改动', eventsOf('agent', 'external-change').length === ev3 + 1);
     ok('关闭自动校准后长期笔记逐字节不变', read(ctxPath) === ctx3);
     ok('关闭自动校准后当天日志逐字节不变', read(logPath) === log3);
@@ -254,7 +260,7 @@ function cleanupDir(dir) {
     ok('全局关闭后监听目录清空', st.track.watchDirs.length === 0);
     const ev4 = eventsOf('agent', 'external-change').length;
     externalWrite('关闭监听后的外部项 E');
-    await wait(1000);
+    await wait(SETTLE_WAIT);
     ok('全局关闭 autoWatch 后不感知外部改动', eventsOf('agent', 'external-change').length === ev4);
 
     // 11. 关闭任务卡生成
@@ -270,7 +276,7 @@ function cleanupDir(dir) {
     const ctx5 = read(ctxPath);
     const log5 = read(logPath);
     externalWrite('关闭同步后的外部项 F');
-    await wait(1000);
+    await wait(SETTLE_WAIT);
     ok('关闭 syncToMemory 后外部改动不写长期笔记', read(ctxPath) === ctx5);
     ok('关闭 syncToMemory 后外部改动不写当天日志', read(logPath) === log5);
 

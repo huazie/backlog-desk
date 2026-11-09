@@ -89,13 +89,8 @@ async function mutate(method, url, body, id = TEST_ID) {
   return req(method, url, { ...body, expectedMtime: await mtimeOf(id) });
 }
 function cleanupDir(dir) {
-  if (!fs.existsSync(dir)) return;
-  for (const n of fs.readdirSync(dir)) {
-    const f = path.join(dir, n);
-    if (fs.statSync(f).isDirectory()) cleanupDir(f);
-    else fs.unlinkSync(f);
-  }
-  fs.rmdirSync(dir);
+  // Windows 上 watcher 可能仍占着句柄，交给 rmSync 重试而不是逐个 unlink
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }
 
 (async () => {
