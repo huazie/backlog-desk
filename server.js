@@ -19,8 +19,20 @@ const backupDirOf = id => path.join(ctx.dataDir, 'backups', id);
 
 const expandHome = v => {
   const s = String(v);
-  if (s === '~' || s.startsWith('~/') || s.startsWith('~\\')) return path.join(os.homedir(), s.slice(1));
-  return s;
+  // ~\ 只在 Windows 是分隔符；POSIX 下反斜杠是普通字符，不能当作家目录前缀
+  const homeSep = s === '~' || s.startsWith('~/') || (path.sep === '\\' && s.startsWith('~\\'));
+  if (!homeSep) return s;
+  return path.join(os.homedir(), s === '~' ? '' : s.slice(2));
+};
+
+// 配置可能在 Windows 写、在 POSIX 读：两种平台的绝对路径写法都要识别
+const isAbsoluteAny = v => path.isAbsolute(v) || path.win32.isAbsolute(v);
+
+// 沿用目标文件原有的换行风格，避免 Windows 的 CRLF 记忆文件被写成混合换行
+const eolOf = text => {
+  const crlf = (text.match(/\r\n/g) || []).length;
+  const lf = (text.match(/(?<!\r)\n/g) || []).length;
+  return crlf > lf ? '\r\n' : '\n';
 };
 
 function resolvePaths(opts = {}) {
@@ -86,12 +98,32 @@ function readBody(req) {
 
 function loadConfig() {
   const f = ctx.configFile;
-  if (!fs.existsSync(f)) return JSON.parse(fs.readFileSync(DEFAULT_CONFIG, 'utf8'));
-  return JSON.parse(fs.readFileSync(f, 'utf8'));
+  const cfg = JSON.parse(fs.readFileSync(fs.existsSync(f) ? f : DEFAULT_CONFIG, 'utf8'));
+  // 仓库内开发配置用相对路径登记兄弟项目，统一以包目录为基准解析，不依赖启动时的 cwd
+  if (f === DEV_CONFIG) {
+    for (const p of cfg.projects || []) {
+      for (const k of ['projectRoot', 'memoryRoot']) {
+        const v = String(p[k] == null ? '' : p[k]);
+        if (v && !v.startsWith('~') && !isAbsoluteAny(v)) p[k] = path.resolve(PKG_DIR, v);
+      }
+    }
+  }
+  return cfg;
 }
 
 function saveConfig(cfg) {
   fs.mkdirSync(path.dirname(ctx.configFile), { recursive: true });
+  // 开发配置保持相对路径可移植：页面回写的绝对路径还原成相对包目录的写法
+  if (ctx.configFile === DEV_CONFIG) {
+    for (const p of cfg.projects || []) {
+      for (const k of ['projectRoot', 'memoryRoot']) {
+        const v = String(p[k] == null ? '' : p[k]);
+        if (!v || v.startsWith('~') || !isAbsoluteAny(v)) continue;
+        const rel = path.relative(PKG_DIR, v).replace(/\\/g, '/');
+        if (rel && !isAbsoluteAny(rel)) p[k] = rel;
+      }
+    }
+  }
   fs.writeFileSync(ctx.configFile, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
 }
 
@@ -105,7 +137,7 @@ function validateConfig(cfg) {
     for (const k of ['memoryDir', 'backlogFile', 'syncFile', 'dailyFile']) {
       if (!a[k]) continue;
       const v = String(a[k]);
-      if (path.isAbsolute(v) || v.split(/[\\/]/).includes('..')) {
+      if (isAbsoluteAny(v) || v.split(/[\\/]/).includes('..')) {
         throw new Error(`Agent ${key} 的 ${k} 必须是记忆目录内的相对路径`);
       }
     }
@@ -291,10 +323,13 @@ function isSelfWrite(file) {
   try { return hashText(fs.readFileSync(file)) === expected; } catch (_) { return false; }
 }
 
+let backupSeq = 0;
 function backupFile(file, p, tag) {
   const bakDir = backupDirOf(p.id);
   fs.mkdirSync(bakDir, { recursive: true });
-  fs.copyFileSync(file, path.join(bakDir, `${Date.now()}_${tag}_${path.basename(file)}`));
+  // 同毫秒连续写盘会撞名，加序号保证每次写前备份都独立留存
+  const name = `${Date.now()}-${String(++backupSeq).padStart(3, '0')}_${tag}_${path.basename(file)}`;
+  fs.copyFileSync(file, path.join(bakDir, name));
   const baks = fs.readdirSync(bakDir).filter(n => n.endsWith('.md')).sort();
   while (baks.length > 30) fs.unlinkSync(path.join(bakDir, baks.shift()));
 }
@@ -306,7 +341,8 @@ function backlogMtime(cfg, p) {
 
 function atomicWrite(file, text) {
   const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, text, 'utf8');
+  const eol = fs.existsSync(file) ? eolOf(fs.readFileSync(file, 'utf8')) : '\n';
+  fs.writeFileSync(tmp, eol === '\r\n' ? text.replace(/\r?\n/g, '\r\n') : text, 'utf8');
   try {
     fs.renameSync(tmp, file);
   } catch (e) {
@@ -417,12 +453,14 @@ function describeChange(change) {
 
 function appendDailyLog(file, line) {
   let prefix = '';
+  let eol = '\n';
   if (!fs.existsSync(file)) prefix = `# ${today()}\n\n`;
   else {
     const text = fs.readFileSync(file, 'utf8');
+    eol = eolOf(text);
     if (text.length && !text.endsWith('\n')) prefix = '\n';
   }
-  fs.appendFileSync(file, prefix + line + '\n', 'utf8');
+  fs.appendFileSync(file, (prefix + line + '\n').replace(/\n/g, eol), 'utf8');
   markSelfWrite(file);
 }
 
@@ -615,7 +653,7 @@ function projectState(cfg, p) {
     backlogPath: file,
     health: {
       projectRoot: fs.existsSync(expandHome(p.projectRoot)),
-      memoryRoot: fs.existsSync(p.memoryRoot),
+      memoryRoot: fs.existsSync(expandHome(p.memoryRoot)),
       memoryDir: fs.existsSync(memDir),
       backlogFile: fs.existsSync(file)
     },
@@ -858,7 +896,13 @@ function start(opts = {}) {
   const cfg = loadConfig();
   setupWatchers(cfg);
   const port = Number(opts.port || process.env.PORT || cfg.port) || 8787;
-  const host = opts.host || (process.env.PORT && !opts.host ? '0.0.0.0' : '127.0.0.1');
+  // 只有端口来自 PORT 环境变量（容器部署）才默认对外绑定；显式 --port / demo 一律只监听回环
+  const envPort = !opts.port && !!process.env.PORT;
+  const host = opts.host || (envPort ? '0.0.0.0' : '127.0.0.1');
+  server.on('error', e => {
+    console.error(`服务启动失败（${host}:${port}）：${e.message}`);
+    process.exitCode = 1;
+  });
   server.listen(port, host, () => {
     const show = host === '0.0.0.0' ? '127.0.0.1' : host;
     console.log(`改造清单台（Backlog Desk）已启动：http://${show}:${port}` +
