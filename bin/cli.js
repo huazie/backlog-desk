@@ -173,7 +173,18 @@ function cmdSkill() {
   const base = args.includes('--global')
     ? path.join(os.homedir(), agentDir.dir, 'skills')
     : path.resolve(opt('--dir') || path.join(process.cwd(), agentDir.dir, 'skills'));
-  const dest = path.join(base, 'bdesk-collab', 'SKILL.md');
+  const skillRoot = path.join(base, 'bdesk-collab');
+  // --uninstall 卸载：只删 bdesk-collab 目录本身，不碰技能根目录下的其他技能
+  if (args.includes('--uninstall')) {
+    if (!fs.existsSync(skillRoot)) {
+      console.log(`未安装 ${agent} 的 bdesk-collab skill：${skillRoot}`);
+      return;
+    }
+    fs.rmSync(skillRoot, { recursive: true, force: true });
+    console.log(`已卸载 ${agent} 的 bdesk-collab skill：${skillRoot}`);
+    return;
+  }
+  const dest = path.join(skillRoot, 'SKILL.md');
   if (fs.existsSync(dest) && !args.includes('--force')) {
     console.log(`已存在 ${dest}，未覆盖（加 --force 可覆盖）`);
     return;
@@ -203,7 +214,7 @@ function usage() {
   bdesk init [选项]        生成用户态配置 ~/.backlog-desk/config.json，已存在则不覆盖
   bdesk doctor [选项]      体检：项目路径、清单文件、配置端口占用
   bdesk demo [选项]        脱敏示例复制到临时目录启动（8788，包目录只读，不碰真实记忆）
-  bdesk skill [选项]       按 agent 安装「改造清单协作约定」skill（支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）；--global 装用户级
+  bdesk skill [选项]       按 agent 安装「改造清单协作约定」skill（支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）；--global 装用户级；--uninstall 卸载
   bdesk help               显示本帮助（等价 -h / --help）
   bdesk --version | -v     显示版本号
 
@@ -216,6 +227,7 @@ function usage() {
   --agent NAME     skill：目标 agent（默认 workbuddy；当前支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）
   --global         skill：安装到用户级技能目录（默认当前项目）
   --dir DIR        skill：指定安装根目录（默认当前项目技能目录）
+  --uninstall      skill：卸载已安装的 bdesk-collab skill（用 --agent / --global / --dir 定位）
   --force          init / skill：覆盖已存在的配置 / skill 文件
   --help | -h      显示本帮助
   --version | -v   显示版本号

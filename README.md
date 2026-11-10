@@ -37,7 +37,7 @@ bdesk skill                        # 按 agent（默认 workbuddy）安装协作
 | `bdesk init` | 生成用户态配置，已存在则不覆盖 |
 | `bdesk doctor` | 体检：项目路径、清单文件、配置端口占用 |
 | `bdesk demo` | 脱敏示例复制到临时目录启动（8788，包目录只读，不碰真实记忆） |
-| `bdesk skill` | 按 agent 安装「改造清单协作约定」skill：默认 `--agent workbuddy`，装当前项目 `.workbuddy/skills/bdesk-collab/`；`--global` 装用户级 `~/.workbuddy/skills/`；`--force` 覆盖。模板分层：通用版 `skill/SKILL.md` 用 `{{AGENT}}` / `{{SKILLS_DIR}}` / `{{HOME_SKILLS_DIR}}` / `{{MEMORY_DIR}}` 占位符，安装时按 agent 注入实际路径；`skill/<agent>/SKILL.md` 为可选定制覆盖 |
+| `bdesk skill` | 按 agent 安装「改造清单协作约定」skill：默认 `--agent workbuddy`，装当前项目 `.workbuddy/skills/bdesk-collab/`；`--global` 装用户级 `~/.workbuddy/skills/`；`--force` 覆盖（即更新到当前模板版本）；`--uninstall` 卸载（按 `--agent` / `--global` / `--dir` 定位，只删 `bdesk-collab` 目录，不碰其他技能）。模板分层：通用版 `skill/SKILL.md` 用 `{{AGENT}}` / `{{SKILLS_DIR}}` / `{{HOME_SKILLS_DIR}}` / `{{MEMORY_DIR}}` 占位符，安装时按 agent 注入实际路径；`skill/<agent>/SKILL.md` 为可选定制覆盖 |
 | `bdesk help` | 显示完整帮助（等价 `-h` / `--help`） |
 | `bdesk --version` | 显示版本号（等价 `-v`） |
 

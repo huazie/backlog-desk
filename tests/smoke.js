@@ -2,7 +2,9 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const crypto = require('crypto');
+const { spawnSync } = require('child_process');
 
 const PORT = Number(process.env.PORT) || 8787;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -188,6 +190,32 @@ async function mtimeOf(id) {
   r = await req('/api/config', 'PUT', { config: winCfg });
   check('TC-019 Windows 盘符绝对路径在任意平台均被拒绝',
     r.status === 400 && /相对路径/.test(r.data.error || ''), r.data.error);
+
+  // ---- bdesk skill 安装 / 更新 / 卸载（CLI 级，临时 --dir 不碰真实技能目录） ----
+  const cli = path.join(ROOT, 'bin', 'cli.js');
+  const tmpSkills = fs.mkdtempSync(path.join(os.tmpdir(), 'bdesk-skill-test-'));
+  try {
+    const run = a => spawnSync(process.execPath, [cli, 'skill', '--dir', tmpSkills, ...a], { encoding: 'utf8' });
+    const installed = path.join(tmpSkills, 'bdesk-collab', 'SKILL.md');
+    let p = run([]);
+    check('TC-020 skill 安装到指定目录且无占位符残留',
+      p.status === 0 && fs.existsSync(installed) && !/\{\{[A-Z_]+\}\}/.test(fs.readFileSync(installed, 'utf8')),
+      (p.stderr || '').trim());
+    p = run([]);
+    check('TC-021 重复安装默认不覆盖',
+      p.status === 0 && /未覆盖/.test(p.stdout), (p.stdout || p.stderr || '').trim());
+    p = run(['--force']);
+    check('TC-022 --force 覆盖更新成功',
+      p.status === 0 && fs.existsSync(installed), (p.stderr || '').trim());
+    p = run(['--uninstall']);
+    check('TC-023 --uninstall 卸载并移除 bdesk-collab 目录',
+      p.status === 0 && !fs.existsSync(path.dirname(installed)), (p.stdout || p.stderr || '').trim());
+    p = run(['--uninstall']);
+    check('TC-024 重复卸载提示未安装',
+      p.status === 0 && /未安装/.test(p.stdout), (p.stdout || '').trim());
+  } finally {
+    fs.rmSync(tmpSkills, { recursive: true, force: true });
+  }
 
   const failed = results.filter(x => !x.ok).length;
   console.log(`\n结果：${results.length - failed}/${results.length} 通过`);
