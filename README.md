@@ -123,7 +123,7 @@ npm run test:local         # 等价于依次跑 tests/smoke.js、sync-check.js�
 |---|---|
 | 切换项目 | 左侧项目栏单击；双击项目卡片进入编辑 |
 | 添加项目 | 顶部「添加项目」，填 `projectRoot` / `memoryRoot` / Agent 适配器（支持 `~/` 路径） |
-| 配置其他 Agent | 顶部「Agent 配置」→「新增适配器」→ 填 `memoryDir` / `backlogFile` / `contextFiles` / `syncFile` / `dailyFile`，再到项目里选它 |
+| 配置其他 Agent | 顶部「Agent 配置」→ 抽屉右上角「新增适配器」；每个适配器卡片独立编辑，头部「保存」仅提交该卡片且抽屉保持打开，点卡片头部可收起/展开；删除卡片「×」二次确认（被项目占用或仅剩一个时不可删）→ 填 `memoryDir` / `backlogFile` / `contextFiles` / `syncFile` / `dailyFile`，再到项目里选它 |
 | 新增改造项 | 表格上方填标题、优先级、说明 →「添加」 |
 | 改优先级 / 状态 / 文案 | 表格内下拉或输入框，失焦即保存并写回 |
 | 删除改造项 | 「移除」= 标记 `removed` 保留决策记录；「×」= 彻底删除（二次确认，有写前备份） |

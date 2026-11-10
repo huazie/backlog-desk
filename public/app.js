@@ -284,12 +284,12 @@ function renderMemory() {
 }
 
 function openDrawer() { $('#drawer').hidden = false; }
-function closeDrawer() { $('#drawer').hidden = true; }
+function closeDrawer() { $('#drawer-actions').innerHTML = ''; $('#drawer').hidden = true; }
 
-async function saveConfig(next, msg) {
+async function saveConfig(next, msg, keepOpen) {
   try {
     await api('/api/config', 'PUT', { config: next });
-    closeDrawer();
+    if (!keepOpen) closeDrawer();
     await loadState();
     toast(msg);
   } catch (e) {
@@ -369,7 +369,10 @@ function agentCard(key, a) {
     `<label>${label}<input data-f="${name}" value="${esc(value)}"></label>`;
   return `<div class="agent-card" data-key="${esc(key)}">
     <div class="agent-head"><b>${esc(a.label || key)}</b><code>${esc(key)}</code>
+      <span class="tw">▾</span>
+      <button class="btn ghost" data-save-agent="${esc(key)}" title="仅保存该适配器">保存</button>
       <button class="op hard" data-del-agent="${esc(key)}" title="删除适配器">×</button></div>
+    <div class="agent-body">
     ${field('label', a.label || '', '显示名称')}
     ${field('memoryDir', a.memoryDir || '', '记忆目录 memoryDir')}
     ${field('backlogFile', a.backlogFile || '', '清单文件名 backlogFile')}
@@ -377,24 +380,23 @@ function agentCard(key, a) {
     ${field('syncFile', a.syncFile || '', '状态镜像 syncFile（留空取上面第一个）')}
     ${field('dailyPattern', a.dailyPattern || '', '日志匹配正则 dailyPattern')}
     ${field('dailyFile', a.dailyFile || '', '日志文件模板 dailyFile（{date} 占位）')}
+    </div>
   </div>`;
 }
 
 function openAgentForm() {
   const cfg = S.config;
   $('#drawer-title').textContent = 'Agent 适配器';
+  $('#drawer-actions').innerHTML = '<button type="button" class="btn" id="btn-add-agent">新增适配器</button>';
   $('#drawer-body').innerHTML = `
     <div class="hint" style="margin-bottom:14px">不同 Agent 只是记忆目录与文件名不同。新增适配器后，在项目配置里选它即可。<code>syncFile</code> 是状态镜像写入的长期笔记（留空取 contextFiles 第一个）；<code>dailyFile</code> 是当天日志文件名模板，<code>{date}</code> 会替换为本地日期。其他 Agent 的目录约定请以其实际文档 / 磁盘目录为准。</div>
     <div id="agent-cards">${Object.entries(cfg.agents).map(([k, a]) => agentCard(k, a)).join('')}</div>
-    <div class="form-actions">
-      <button type="button" class="btn" id="btn-add-agent">新增适配器</button>
-      <button type="button" class="btn primary" id="btn-save-agents">保存</button>
-    </div>`;
+    <div class="hint">每个适配器独立保存：点卡片头部的「保存」只提交该卡片的修改，抽屉保持打开。</div>`;
   openDrawer();
 
   $('#btn-add-agent').addEventListener('click', () => {
     const key = prompt('输入适配器标识（英文，如 claude）：');
-    if (!key || !/^[a-zA-Z0-9_-]+$/.test(key) || cfg.agents[key]) {
+    if (!key || !/^[a-zA-Z0-9_-]+$/.test(key) || S.config.agents[key]) {
       toast('标识为空、格式不符或已存在', 'err');
       return;
     }
@@ -403,25 +405,6 @@ function openAgentForm() {
       contextFiles: [], syncFile: '', dailyPattern: '^\\d{4}-\\d{2}-\\d{2}\\.md$',
       dailyFile: '{date}.md'
     }));
-  });
-
-  $('#btn-save-agents').addEventListener('click', () => {
-    const agents = {};
-    for (const card of document.querySelectorAll('.agent-card')) {
-      const get = n => (card.querySelector(`[data-f="${n}"]`)?.value || '').trim();
-      const key = card.dataset.key;
-      agents[key] = {
-        ...(cfg.agents[key] || {}),
-        label: get('label') || key,
-        memoryDir: get('memoryDir'),
-        backlogFile: get('backlogFile'),
-        contextFiles: get('contextFiles').split(',').map(s => s.trim()).filter(Boolean),
-        syncFile: get('syncFile'),
-        dailyPattern: get('dailyPattern'),
-        dailyFile: get('dailyFile')
-      };
-    }
-    saveConfig({ ...cfg, agents }, 'Agent 适配器已保存');
   });
 }
 
@@ -539,16 +522,49 @@ $('#btn-theme').addEventListener('click', () => {
   document.documentElement.dataset.theme = next;
   localStorage.setItem('pbw-theme', next);
 });
-$('#drawer').addEventListener('click', e => {
+$('#drawer').addEventListener('click', async e => {
   if (e.target.closest('[data-close]')) return closeDrawer();
-  const del = e.target.closest('[data-del-agent]');
-  if (!del) return;
-  const key = del.dataset.delAgent;
-  if (S.config.projects.some(p => p.agent === key)) {
-    toast('仍有项目在使用该适配器，不能删除', 'err');
+  // 卡片头部的「保存」：只提交该卡片的修改，抽屉保持打开
+  const sv = e.target.closest('[data-save-agent]');
+  if (sv) {
+    const card = sv.closest('.agent-card');
+    const key = card.dataset.key;
+    const get = n => (card.querySelector(`[data-f="${n}"]`)?.value || '').trim();
+    const agents = { ...S.config.agents };
+    agents[key] = {
+      ...(S.config.agents[key] || {}),
+      label: get('label') || key,
+      memoryDir: get('memoryDir'),
+      backlogFile: get('backlogFile'),
+      contextFiles: get('contextFiles').split(',').map(s => s.trim()).filter(Boolean),
+      syncFile: get('syncFile'),
+      dailyPattern: get('dailyPattern'),
+      dailyFile: get('dailyFile')
+    };
+    saveConfig({ ...S.config, agents }, `适配器「${agents[key].label || key}」已保存`, true);
     return;
   }
-  del.closest('.agent-card').remove();
+  const del = e.target.closest('[data-del-agent]');
+  if (del) {
+    const key = del.dataset.delAgent;
+    if (S.config.projects.some(p => p.agent === key)) {
+      toast('仍有项目在使用该适配器，不能删除', 'err');
+      return;
+    }
+    if (!confirm(`删除适配器「${key}」？\n仅移除工作台配置，不影响任何项目记忆文件。`)) return;
+    const agents = { ...S.config.agents };
+    delete agents[key];
+    if (!Object.keys(agents).length) {
+      toast('至少保留一个适配器', 'err');
+      return;
+    }
+    await saveConfig({ ...S.config, agents }, `适配器「${S.config.agents[key].label || key}」已删除`, true);
+    del.closest('.agent-card').remove();
+    return;
+  }
+  // 点击适配器头部空白处切换收起/展开（按钮分支已在上方各自 return）
+  const head = e.target.closest('.agent-head');
+  if (head) head.closest('.agent-card').classList.toggle('collapsed');
 });
 
 document.documentElement.dataset.theme = localStorage.getItem('pbw-theme') || 'light';
