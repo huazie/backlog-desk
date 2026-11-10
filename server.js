@@ -289,8 +289,9 @@ function buildTaskPrompt(cfg, p, it) {
     `1. 先读 记忆目录/改造清单协作约定.md 与 记忆目录/${a.backlogFile}。`,
     `2. 唯一权威源是 ${a.backlogFile} 的 ${MARK_BEGIN} / ${MARK_END} 标记区块；MEMORY.md 末尾状态镜像由工作台维护，不要手写。`,
     `3. 完成后只把该行 status 改为 done、updated 改为今天（本地日期 YYYY-MM-DD），不要删行、不要重排 ID。`,
-    `4. 执行过程可在当天日志 append 一行留痕；不要自动 commit / push。`,
-    `5. 工作台会自动感知清单变化并刷新看板。`
+    `4. 不要自动 commit / push；但代码经指示完成 commit 或 push 的同一轮，必须同步更新该行（commit 后按进度置 done / doing 并在 note 记 hash，push 后复核置 done），不留滞后。`,
+    `5. 执行过程可在当天日志 append 一行留痕。`,
+    `6. 工作台会自动感知清单变化并刷新看板。`
   ].filter(Boolean).join('\n');
 }
 
