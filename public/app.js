@@ -158,8 +158,8 @@ function renderBoard() {
       <td class="c-id mono">#${esc(it.id)}</td>
       <td><select class="cell-sel" data-field="priority" data-p="${esc(it.priority)}">${optP}</select></td>
       <td><select class="cell-sel" data-field="status" data-s="${esc(it.status)}">${optS}</select></td>
-      <td><input class="cell-input" data-field="title" value="${esc(it.title)}"></td>
-      <td><input class="cell-input note" data-field="note" value="${esc(it.note)}"></td>
+      <td><input class="cell-input" data-field="title" value="${esc(it.title)}" title="${esc(it.title)}"></td>
+      <td><input class="cell-input note" data-field="note" value="${esc(it.note)}" title="${esc(it.note)}"></td>
       <td class="c-date mono">${esc(it.updated)}</td>
       <td class="c-op">
         <button class="op" data-act="remove">移除</button>
@@ -447,6 +447,12 @@ $('#items-body').addEventListener('change', e => {
   if (field === 'status') { t.dataset.s = t.value; tr.className = 's-' + t.value; }
   commit(`${activeUrl()}/${encodeURIComponent(tr.dataset.id)}`, 'PATCH',
     { [field]: t.value }, `已更新 #${tr.dataset.id} 的${field === 'title' ? '标题' : field === 'note' ? '说明' : field === 'priority' ? '优先级' : '状态'}`);
+});
+
+// 输入框内容超宽被裁剪时，悬浮 title 提示跟随编辑实时更新
+$('#items-body').addEventListener('input', e => {
+  const f = e.target.dataset && e.target.dataset.field;
+  if (f === 'title' || f === 'note') e.target.title = e.target.value;
 });
 
 $('#items-body').addEventListener('focusout', e => {
