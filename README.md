@@ -26,6 +26,7 @@ bdesk init                         # 生成空配置模板，之后在页面「�
 bdesk init --from ./我的配置.json   # 从既有配置导入
 bdesk doctor                       # 体检：项目路径、清单文件、配置端口占用
 bdesk demo                         # 示例复制到临时目录启动（8788），包内 demo/ 只读
+bdesk skill                        # 按 agent（默认 workbuddy）安装协作约定 skill 到当前项目，Agent 会话自动加载
 ```
 
 ## 命令
@@ -36,8 +37,11 @@ bdesk demo                         # 示例复制到临时目录启动（8788）
 | `bdesk init` | 生成用户态配置，已存在则不覆盖 |
 | `bdesk doctor` | 体检：项目路径、清单文件、配置端口占用 |
 | `bdesk demo` | 脱敏示例复制到临时目录启动（8788，包目录只读，不碰真实记忆） |
+| `bdesk skill` | 按 agent 安装「改造清单协作约定」skill：默认 `--agent workbuddy`，装当前项目 `.workbuddy/skills/bdesk-collab/`；`--global` 装用户级 `~/.workbuddy/skills/`；`--force` 覆盖。模板分层：通用版 `skill/SKILL.md` 用 `{{AGENT}}` / `{{SKILLS_DIR}}` / `{{HOME_SKILLS_DIR}}` / `{{MEMORY_DIR}}` 占位符，安装时按 agent 注入实际路径；`skill/<agent>/SKILL.md` 为可选定制覆盖 |
 | `bdesk help` | 显示完整帮助（等价 `-h` / `--help`） |
 | `bdesk --version` | 显示版本号（等价 `-v`） |
+
+> 新增 agent 支持：`bin/cli.js` 的 `SKILL_AGENT_DIR` 加一条映射 `{ dir: '<技能根目录名>', memoryDir: '<默认记忆目录>' }`，即可 `bdesk skill --agent <名字>`（模板路径由占位符自动注入，通用正文零改动；某 agent 需要定制正文时，新建 `skill/<agent>/SKILL.md` 整份覆盖）。
 
 ## 常用选项
 

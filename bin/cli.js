@@ -2,7 +2,7 @@
 'use strict';
 
 // bdesk —— 改造清单台 · Backlog Desk 命令行入口
-// 用法：bdesk <start|init|doctor|demo> [选项]
+// 用法：bdesk <start|init|doctor|demo|skill> [选项]
 
 const fs = require('fs');
 const path = require('path');
@@ -142,6 +142,57 @@ function cmdDemo() {
   }, 800);
 }
 
+// skill 安装支持的 agent 元数据：dir = 技能根目录名（项目级 <cwd>/<dir>/skills、用户级 ~/<dir>/skills），
+// memoryDir = 该 agent 的默认记忆目录（注入模板文档用）。后续支持其他 agent 时在此追加映射即可
+const SKILL_AGENT_DIR = {
+  workbuddy: { dir: '.workbuddy', memoryDir: '.workbuddy/memory' }
+};
+
+function cmdSkill() {
+  const agent = opt('--agent') || 'workbuddy';
+  const agentDir = SKILL_AGENT_DIR[agent];
+  if (!agentDir) {
+    console.error(`暂不支持的 agent：${agent}（当前支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）`);
+    process.exitCode = 1;
+    return;
+  }
+  // 模板分层：根目录 skill/SKILL.md 是通用模板（所有 agent 共用）；
+  // skill/<agent>/SKILL.md 是该 agent 的定制版，存在则整份覆盖，没有就回落通用版
+  const agentTpl = path.join(__dirname, '..', 'skill', agent, 'SKILL.md');
+  const src = fs.existsSync(agentTpl)
+    ? agentTpl
+    : path.join(__dirname, '..', 'skill', 'SKILL.md');
+  if (!fs.existsSync(src)) {
+    console.error(`缺少 skill 模板：${src}（安装包可能不完整，请重装 backlog-desk）`);
+    process.exitCode = 1;
+    return;
+  }
+  // 默认装当前项目（项目级技能目录），--global 装用户级，--dir 供自定义 / 测试
+  const base = args.includes('--global')
+    ? path.join(os.homedir(), agentDir.dir, 'skills')
+    : path.resolve(opt('--dir') || path.join(process.cwd(), agentDir.dir, 'skills'));
+  const dest = path.join(base, 'bdesk-collab', 'SKILL.md');
+  if (fs.existsSync(dest) && !args.includes('--force')) {
+    console.log(`已存在 ${dest}，未覆盖（加 --force 可覆盖）`);
+    return;
+  }
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  // 占位符按 agent 注入：通用模板 skill/SKILL.md 不写死任何 agent 的路径；
+  // split/join 而非正则 replace，路径含 $& 等字符也不会被误展开
+  const text = fs.readFileSync(src, 'utf8')
+    .split('{{AGENT}}').join(agent)
+    .split('{{SKILLS_DIR}}').join(`${agentDir.dir}/skills`)
+    .split('{{HOME_SKILLS_DIR}}').join(`~/${agentDir.dir}/skills`)
+    .split('{{MEMORY_DIR}}').join(agentDir.memoryDir);
+  fs.writeFileSync(dest, text, 'utf8');
+  console.log(`已安装 ${agent} 的 bdesk-collab skill：${dest}`);
+  console.log(args.includes('--global')
+    ? '生效范围：用户级技能目录，对该 agent 的所有项目生效。'
+    : opt('--dir')
+      ? '生效范围：指定的安装目录（--dir）。'
+      : `生效范围：当前项目的项目级技能目录（${agentDir.dir}/skills/）。`);
+}
+
 function usage() {
   console.log(`backlog-desk v${pkg.version} —— 改造清单台
 
@@ -150,6 +201,7 @@ function usage() {
   bdesk init [选项]        生成用户态配置 ~/.backlog-desk/config.json，已存在则不覆盖
   bdesk doctor [选项]      体检：项目路径、清单文件、配置端口占用
   bdesk demo [选项]        脱敏示例复制到临时目录启动（8788，包目录只读，不碰真实记忆）
+  bdesk skill [选项]       按 agent 安装「改造清单协作约定」skill（支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）；--global 装用户级
   bdesk help               显示本帮助（等价 -h / --help）
   bdesk --version | -v     显示版本号
 
@@ -159,7 +211,10 @@ function usage() {
   --config FILE    start / doctor：指定配置文件
   --data-dir DIR   start / init / doctor：指定数据目录
   --from FILE      init：从既有配置导入（相对路径展开为绝对）
-  --force          init：覆盖已存在的配置
+  --agent NAME     skill：目标 agent（默认 workbuddy；当前支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）
+  --global         skill：安装到用户级技能目录（默认当前项目）
+  --dir DIR        skill：指定安装根目录（默认当前项目技能目录）
+  --force          init / skill：覆盖已存在的配置 / skill 文件
   --help | -h      显示本帮助
   --version | -v   显示版本号
 
@@ -178,5 +233,6 @@ switch (cmd) {
   case 'init': cmdInit(); break;
   case 'doctor': cmdDoctor(); break;
   case 'demo': cmdDemo(); break;
+  case 'skill': cmdSkill(); break;
   default: usage(); process.exitCode = cmd === 'help' ? 0 : 1;
 }
