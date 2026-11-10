@@ -708,6 +708,7 @@ function memoryView(cfg, p) {
     view.dailyLogs.push({
       name,
       headings: lines.filter(l => /^##\s+/.test(l)).map(l => l.replace(/^##\s+/, '')),
+      lines: lines.length,
       excerpt: text.slice(0, 500),
       tail: lines.slice(-5).join('\n')
     });

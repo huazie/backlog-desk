@@ -275,7 +275,7 @@ function renderMemory() {
   const ctx = (m.contextFiles || []).map(f =>
     `<details open><summary>${esc(f.name)}</summary><pre>${esc(f.content)}</pre></details>`).join('');
   const logs = (m.dailyLogs || []).map(l =>
-    `<details><summary>${esc(l.name)} · ${l.headings.length} 节</summary><ul>${l.headings.map(h => `<li>${esc(h)}</li>`).join('')}</ul><pre>${esc(l.tail || '')}</pre></details>`).join('');
+    `<details><summary>${esc(l.name)} · ${l.headings.length} 节 · ${l.lines || 0} 行</summary><ul>${l.headings.map(h => `<li>${esc(h)}</li>`).join('')}</ul><pre>${esc(l.tail || '')}</pre></details>`).join('');
   $('#memory-body').innerHTML = `
     <div class="mem-path mono">${esc(m.memoryDir || '')}</div>
     <h4>长期笔记</h4>${ctx || '<div class="muted">未找到长期笔记文件</div>'}
