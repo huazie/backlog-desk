@@ -12,6 +12,14 @@ const pkg = require('../package.json');
 const srv = require('../server.js');
 
 const args = process.argv.slice(2);
+
+// skill 安装支持的 agent 元数据：dir = 技能根目录名（项目级 <cwd>/<dir>/skills、用户级 ~/<dir>/skills），
+// memoryDir = 该 agent 的默认记忆目录（注入模板文档用）。后续支持其他 agent 时在此追加映射即可
+// 注意：必须声明在顶部 -h 快路径之前，usage() 的动态 agent 列表依赖它
+const SKILL_AGENT_DIR = {
+  workbuddy: { dir: '.workbuddy', memoryDir: '.workbuddy/memory' }
+};
+
 const cmd = args[0] && !args[0].startsWith('-') ? args[0] : 'start';
 const opt = name => {
   const i = args.indexOf(name);
@@ -141,12 +149,6 @@ function cmdDemo() {
     }
   }, 800);
 }
-
-// skill 安装支持的 agent 元数据：dir = 技能根目录名（项目级 <cwd>/<dir>/skills、用户级 ~/<dir>/skills），
-// memoryDir = 该 agent 的默认记忆目录（注入模板文档用）。后续支持其他 agent 时在此追加映射即可
-const SKILL_AGENT_DIR = {
-  workbuddy: { dir: '.workbuddy', memoryDir: '.workbuddy/memory' }
-};
 
 function cmdSkill() {
   const agent = opt('--agent') || 'workbuddy';
