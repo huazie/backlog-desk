@@ -907,8 +907,9 @@ function start(opts = {}) {
   });
   server.listen(port, host, () => {
     const show = host === '0.0.0.0' ? '127.0.0.1' : host;
-    console.log(`改造清单台（Backlog Desk）已启动：http://${show}:${port}` +
-      ` ｜ 数据目录：${ctx.dataDir} ｜ 自动跟踪 ${watchers.size} 个记忆目录`);
+    console.log(`改造清单台（Backlog Desk）已启动：http://${show}:${port}`);
+    console.log(`数据目录：${ctx.dataDir}`);
+    console.log(`自动跟踪 ${watchers.size} 个记忆目录`);
   });
   return server;
 }
