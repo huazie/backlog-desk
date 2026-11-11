@@ -38,6 +38,7 @@ async function api(url, method = 'GET', body) {
 const activeProject = () => S.projects.find(p => p.id === S.active);
 const activeMtime = () => activeProject()?.mtime ?? null;
 const activeUrl = () => '/api/items/' + encodeURIComponent(S.active);
+const activeTasks = () => S.tasks.filter(t => t.project === S.active);
 
 let toastTimer;
 function toast(msg, kind = 'ok') {
@@ -192,17 +193,18 @@ function renderTrackBar() {
     text = `自动跟踪已开启 · 清单与镜像一致 · 指纹 ${t.fingerprint || '—'}`;
   }
   bar.className = 'track-bar ' + cls;
-  bar.innerHTML = `<span class="dot"></span><span class="grow">${esc(text)}</span>${action}<span class="badge ro">待派发 ${S.tasks.length}</span>`;
+  bar.innerHTML = `<span class="dot"></span><span class="grow">${esc(text)}</span>${action}<span class="badge ro">待派发 ${activeTasks().length}</span>`;
   const btn = $('#btn-calibrate');
   if (btn) btn.addEventListener('click', () => $('#btn-resync').click());
 }
 
 function renderTasks() {
   const panel = $('#task-panel');
-  if (!S.tasks.length) { panel.hidden = true; return; }
+  const tasks = activeTasks();
+  if (!tasks.length) { panel.hidden = true; return; }
   panel.hidden = false;
-  $('#task-count').textContent = S.tasks.length + ' 张';
-  $('#task-list').innerHTML = S.tasks.map(t => {
+  $('#task-count').textContent = tasks.length + ' 张';
+  $('#task-list').innerHTML = tasks.map(t => {
     const k = t.task || {};
     return `<div class="task-item" data-id="${esc(t.id)}">
       <span class="pri-tag" data-p="${esc(k.priority)}">${esc(k.priority)}</span>
@@ -474,10 +476,11 @@ $('#task-list').addEventListener('click', async e => {
       fallbackCopy(t.task.prompt);
     }
   } else {
+    if (!confirm(`关闭并隐藏任务卡 #${t.task?.itemId ?? ''}？\n仅关闭这张卡，不影响清单条目状态；关闭后看板不再显示。`)) return;
     try {
       await api('/api/tasks/' + encodeURIComponent(id), 'POST', { status: 'done' });
       await loadState(false);
-      toast('任务卡已标记完成');
+      toast('任务卡已关闭');
     } catch (err) { toast(err.message, 'err'); }
   }
 });
