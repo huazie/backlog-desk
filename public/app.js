@@ -56,7 +56,12 @@ async function loadState(withMemory = true) {
   S.tasks = d.tasks || [];
   S.track = d.track || null;
   lastMtimes = d.projects.map(p => `${p.id}:${p.mtime}`).join('|');
+  // 记住上次选中的项目：刷新/重开页面后恢复；项目已不存在则回落第一个并清理记录
+  const saved = localStorage.getItem('pbw-project');
+  if (!S.active && saved && S.projects.some(p => p.id === saved)) S.active = saved;
   if (!S.projects.some(p => p.id === S.active)) S.active = S.projects[0]?.id ?? null;
+  if (S.active) localStorage.setItem('pbw-project', S.active);
+  else localStorage.removeItem('pbw-project');
   renderAll();
   if (withMemory) await loadMemory();
 }
@@ -414,6 +419,7 @@ $('#project-list').addEventListener('click', e => {
   const b = e.target.closest('.proj');
   if (!b) return;
   S.active = b.dataset.id;
+  localStorage.setItem('pbw-project', S.active);
   renderAll();
   loadMemory();
 });
