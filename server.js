@@ -271,6 +271,24 @@ function readEvents() {
 
 const pendingTasks = () => readEvents().filter(e => e.status === 'pending' && e.task);
 
+// 条目到达终态（done/removed）后自动关闭其 pending 任务卡，避免卡片滞留「待派发」
+function closeTaskCards(projectId, itemIds, reason) {
+  if (!itemIds || !itemIds.size) return false;
+  const events = readEvents();
+  let changed = false;
+  for (const e of events) {
+    if (e.status === 'pending' && e.task && e.project === projectId &&
+        itemIds.has(String(e.task.itemId))) {
+      e.status = 'done';
+      e.closedAt = nowText();
+      e.closeReason = reason;
+      changed = true;
+    }
+  }
+  if (changed) fs.writeFileSync(historyFile(), events.map(e => JSON.stringify(e)).join('\n') + '\n', 'utf8');
+  return changed;
+}
+
 /* ---------- 工作台 → Agent 的手动任务卡（只生成，不自动执行） ---------- */
 
 function buildTaskPrompt(cfg, p, it) {
@@ -604,6 +622,9 @@ function handleExternalChange(cfg, p, items, fp) {
       if (t.daily) markSelfWrite(t.daily);
     } catch (_) { /* 已由 sync 返回 warning */ }
   }
+  closeTaskCards(p.id, new Set(items
+    .filter(i => i.status === 'done' || i.status === 'removed')
+    .map(i => String(i.id))), 'item-done');
   appendEvent(p.id, 'external-change', {
     count: items.length, fingerprint: fp, files: sync ? sync.files.length : 0
   }, { source: 'agent' });
@@ -810,6 +831,9 @@ const server = http.createServer(async (req, res) => {
         if (t.daily) markSelfWrite(t.daily);
       } catch (_) { /* 已由 sync.warning 体现 */ }
       lastExternalFp.set(p.id, fingerprint(st.items));
+      closeTaskCards(p.id, new Set(st.items
+        .filter(i => i.status === 'done' || i.status === 'removed')
+        .map(i => String(i.id))), 'item-done');
       appendEvent(p.id, 'resync', { count: st.items.length, files: sync.files.length });
       const file = backlogFileOf(cfg, p);
       return json(res, 200, {
@@ -863,6 +887,9 @@ const server = http.createServer(async (req, res) => {
         const sync = syncMemory(cfg, p, items, { action: 'edit', item: it, before });
         markSelfWrite(backlogFileOf(cfg, p));
         const task = taskFor(cfg, p, 'edit', it, before);
+        if (it.status === 'done' || it.status === 'removed') {
+          closeTaskCards(p.id, new Set([String(it.id)]), 'item-done');
+        }
         appendEvent(p.id, 'edit', { id: it.id, changed: Object.keys(body).filter(k => k !== 'expectedMtime'), sync: sync.files.length },
           { item: { ...it }, task, status: task ? 'pending' : 'logged' });
         lastExternalFp.set(p.id, fingerprint(items));
