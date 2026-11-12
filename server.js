@@ -271,14 +271,14 @@ function readEvents() {
 
 const pendingTasks = () => readEvents().filter(e => e.status === 'pending' && e.task);
 
-// 条目到达终态（done/removed）后自动关闭其 pending 任务卡，避免卡片滞留「待派发」
-function closeTaskCards(projectId, itemIds, reason) {
-  if (!itemIds || !itemIds.size) return false;
+// 条目不再满足派发前提（终态 done/removed，或由 doing 退回 todo）时，
+// 自动关闭其 pending 任务卡，避免卡片滞留「待派发」
+function closeTaskCards(projectId, match, reason) {
+  if (typeof match !== 'function') return false;
   const events = readEvents();
   let changed = false;
   for (const e of events) {
-    if (e.status === 'pending' && e.task && e.project === projectId &&
-        itemIds.has(String(e.task.itemId))) {
+    if (e.status === 'pending' && e.task && e.project === projectId && match(e.task)) {
       e.status = 'done';
       e.closedAt = nowText();
       e.closeReason = reason;
@@ -288,6 +288,17 @@ function closeTaskCards(projectId, itemIds, reason) {
   if (changed) fs.writeFileSync(historyFile(), events.map(e => JSON.stringify(e)).join('\n') + '\n', 'utf8');
   return changed;
 }
+
+// 通用判定：按当前清单条目状态判断其 pending 卡是否已失效
+// —— 条目不存在 / done / removed 任意一种，或卡片按「转 doing」生成而条目已退回 todo
+const staleCardOf = items => {
+  const byId = new Map(items.map(i => [String(i.id), i]));
+  return task => {
+    const it = byId.get(String(task.itemId));
+    return !it || it.status === 'done' || it.status === 'removed' ||
+      (task.status === 'doing' && it.status === 'todo');
+  };
+};
 
 /* ---------- 工作台 → Agent 的手动任务卡（只生成，不自动执行） ---------- */
 
@@ -622,9 +633,7 @@ function handleExternalChange(cfg, p, items, fp) {
       if (t.daily) markSelfWrite(t.daily);
     } catch (_) { /* 已由 sync 返回 warning */ }
   }
-  closeTaskCards(p.id, new Set(items
-    .filter(i => i.status === 'done' || i.status === 'removed')
-    .map(i => String(i.id))), 'item-done');
+  closeTaskCards(p.id, staleCardOf(items), 'item-not-doing');
   appendEvent(p.id, 'external-change', {
     count: items.length, fingerprint: fp, files: sync ? sync.files.length : 0
   }, { source: 'agent' });
@@ -831,9 +840,7 @@ const server = http.createServer(async (req, res) => {
         if (t.daily) markSelfWrite(t.daily);
       } catch (_) { /* 已由 sync.warning 体现 */ }
       lastExternalFp.set(p.id, fingerprint(st.items));
-      closeTaskCards(p.id, new Set(st.items
-        .filter(i => i.status === 'done' || i.status === 'removed')
-        .map(i => String(i.id))), 'item-done');
+      closeTaskCards(p.id, staleCardOf(st.items), 'item-not-doing');
       appendEvent(p.id, 'resync', { count: st.items.length, files: sync.files.length });
       const file = backlogFileOf(cfg, p);
       return json(res, 200, {
@@ -888,7 +895,9 @@ const server = http.createServer(async (req, res) => {
         markSelfWrite(backlogFileOf(cfg, p));
         const task = taskFor(cfg, p, 'edit', it, before);
         if (it.status === 'done' || it.status === 'removed') {
-          closeTaskCards(p.id, new Set([String(it.id)]), 'item-done');
+          closeTaskCards(p.id, t => t.itemId === String(it.id), 'item-done');
+        } else if (before.status === 'doing' && it.status === 'todo') {
+          closeTaskCards(p.id, t => t.itemId === String(it.id), 'item-not-doing');
         }
         appendEvent(p.id, 'edit', { id: it.id, changed: Object.keys(body).filter(k => k !== 'expectedMtime'), sync: sync.files.length },
           { item: { ...it }, task, status: task ? 'pending' : 'logged' });
@@ -902,6 +911,7 @@ const server = http.createServer(async (req, res) => {
         const it = items[idx];
         if (body.hard) items.splice(idx, 1);
         else { it.status = 'removed'; it.updated = today(); }
+        closeTaskCards(p.id, t => t.itemId === String(it.id), 'item-done');
         writeBacklog(cfg, p, items, body.expectedMtime);
         const sync = syncMemory(cfg, p, items, { action: body.hard ? 'hard-delete' : 'soft-delete', item: it });
         markSelfWrite(backlogFileOf(cfg, p));
