@@ -158,8 +158,12 @@ function renderBoard() {
   $('#items-body').innerHTML = rows.map(it => {
     const optP = PRIORITIES.map(x =>
       `<option value="${x}" ${x === it.priority ? 'selected' : ''}>${x}</option>`).join('');
-    const optS = STATUSES.map(([v, l]) =>
-      `<option value="${v}" ${v === it.status ? 'selected' : ''}>${l}</option>`).join('');
+    // 「已完成」只能由 Agent 按约定回写、「已移除」只能由右侧「移除」按钮完成，
+    // 状态下拉里这两项置灰（当前值除外），不允许手动直接切换
+    const optS = STATUSES.map(([v, l]) => {
+      const locked = (v === 'done' || v === 'removed') && v !== it.status;
+      return `<option value="${v}" ${v === it.status ? 'selected' : ''}${locked ? ' disabled' : ''}>${l}</option>`;
+    }).join('');
     return `<tr data-id="${esc(it.id)}" class="s-${esc(it.status)}">
       <td class="c-id mono">#${esc(it.id)}</td>
       <td><select class="cell-sel" data-field="priority" data-p="${esc(it.priority)}">${optP}</select></td>
@@ -560,13 +564,13 @@ $('#drawer').addEventListener('click', async e => {
       toast('仍有项目在使用该适配器，不能删除', 'err');
       return;
     }
+    if (Object.keys(S.config.agents).length <= 1) {
+      toast('最后一个适配器不允许删除', 'err');
+      return;
+    }
     if (!confirm(`删除适配器「${key}」？\n仅移除工作台配置，不影响任何项目记忆文件。`)) return;
     const agents = { ...S.config.agents };
     delete agents[key];
-    if (!Object.keys(agents).length) {
-      toast('至少保留一个适配器', 'err');
-      return;
-    }
     await saveConfig({ ...S.config, agents }, `适配器「${S.config.agents[key].label || key}」已删除`, true);
     del.closest('.agent-card').remove();
     return;
