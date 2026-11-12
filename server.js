@@ -355,6 +355,8 @@ function isSelfWrite(file) {
 
 let backupSeq = 0;
 function backupFile(file, p, tag) {
+  // 首次建立镜像时源文件可能尚不存在（如新项目的 MEMORY.md），无内容可备份则跳过
+  if (!fs.existsSync(file)) return;
   const bakDir = backupDirOf(p.id);
   fs.mkdirSync(bakDir, { recursive: true });
   // 同毫秒连续写盘会撞名，加序号保证每次写前备份都独立留存
