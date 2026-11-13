@@ -78,7 +78,7 @@ a { color: var(--accent); }
   flex-wrap: wrap;
 }
 .brand { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
-.logo { color: var(--accent); font-size: 15px; }
+.logo { width: 18px; height: 18px; color: var(--accent); flex: none; align-self: center; }
 .brand h1 { font-size: 15px; font-weight: 500; margin: 0; }
 .brand .sub { color: var(--text-3); font-size: 12px; }
 .stats { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
