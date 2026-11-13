@@ -118,11 +118,12 @@ function renderProjects() {
   $('#project-list').innerHTML = S.projects.map(p => {
     const pending = p.items.filter(i => i.status === 'todo' || i.status === 'doing').length;
     const bad = Object.values(p.health).some(v => !v);
-    return `<button class="proj ${p.id === S.active ? 'active' : ''}" data-id="${esc(p.id)}">
+    return `<div class="proj ${p.id === S.active ? 'active' : ''}" data-id="${esc(p.id)}" role="button">
       <span class="proj-name">${esc(p.name)}</span>
       <span class="proj-meta">${esc(p.agentLabel)} · ${p.items.length} 项 · 待办 ${pending}</span>
       <span class="proj-path ${bad ? 'bad' : ''}">${bad ? '路径异常，请检查配置' : '记忆根可达'}</span>
-    </button>`;
+      <button class="op" data-edit-project="${esc(p.id)}" title="编辑项目">✎</button>
+    </div>`;
   }).join('') || '<div class="muted">暂无项目，点「添加项目」开始</div>';
 }
 
@@ -303,8 +304,10 @@ async function saveConfig(next, msg, keepOpen) {
     if (!keepOpen) closeDrawer();
     await loadState();
     toast(msg);
+    return true;
   } catch (e) {
     toast(e.message, 'err');
+    return false;
   }
 }
 
@@ -333,46 +336,43 @@ function openTrackForm() {
   });
 }
 
-function openProjectForm(id) {
-  const cfg = S.config;
-  const p = id
-    ? cfg.projects.find(x => x.id === id)
-    : { id: '', name: '', projectRoot: '', memoryRoot: '', agent: Object.keys(cfg.agents)[0] };
-  const agents = Object.keys(cfg.agents).map(k =>
-    `<option value="${esc(k)}" ${k === p.agent ? 'selected' : ''}>${esc(cfg.agents[k].label || k)}</option>`).join('');
-
-  $('#drawer-title').textContent = id ? '编辑项目' : '添加项目';
-  $('#drawer-body').innerHTML = `<form id="form-project" class="form">
-    <label>项目 ID<input name="id" value="${esc(p.id)}" ${id ? 'readonly' : ''} placeholder="如 flea-game" required></label>
-    <label>显示名称<input name="name" value="${esc(p.name)}" required></label>
-    <label>代码根 projectRoot<input name="projectRoot" value="${esc(p.projectRoot)}" placeholder="项目目录绝对路径或 ~/..." required></label>
-    <label>记忆根 memoryRoot<input name="memoryRoot" value="${esc(p.memoryRoot)}" placeholder="可与代码根不同" required></label>
-    <label>Agent 适配器<select name="agent">${agents}</select></label>
-    <div class="hint">projectRoot 是代码位置；memoryRoot 才是读取与写回记忆的位置。主题类子项目通常指向父仓。修改配置不会删除任何记忆文件。</div>
-    <div class="form-actions">
-      <button type="submit" class="btn primary">保存</button>
-      ${id ? '<button type="button" class="btn danger" id="btn-del-project">删除项目</button>' : ''}
+// 项目配置卡片：复用 agent-card 的卡片样式与收起/展开交互，每个项目独立编辑、独立保存
+function projectCard(p, isNew) {
+  const d = p || { name: '', projectRoot: '', memoryRoot: '', agent: Object.keys(S.config.agents)[0] };
+  const agents = Object.entries(S.config.agents).map(([k, a]) =>
+    `<option value="${esc(k)}" ${k === d.agent ? 'selected' : ''}>${esc(a.label || k)}</option>`).join('');
+  return `<div class="agent-card ${p && !isNew ? 'collapsed' : ''}" data-id="${esc(p?.id || '')}">
+    <div class="agent-head"><b>${esc(d.name || '新项目')}</b><code>${esc(p?.id || '未保存')}</code>
+      <span class="tw">▾</span>
+      <button class="btn ghost" data-save-project="${esc(p?.id || '')}" title="仅保存该项目">保存</button>
+      ${p ? `<button class="op hard" data-del-project="${esc(p.id)}" title="删除项目">×</button>` : ''}
     </div>
-  </form>`;
-  openDrawer();
+    <div class="agent-body">
+      <label>项目 ID<input data-f="id" value="${esc(p?.id || '')}" ${p ? 'readonly' : ''} placeholder="英文标识，如 flea-game"></label>
+      <label>显示名称<input data-f="name" value="${esc(d.name)}"></label>
+      <label>代码根 projectRoot<input data-f="projectRoot" value="${esc(d.projectRoot)}" placeholder="项目目录绝对路径或 ~/..."></label>
+      <label>记忆根 memoryRoot<input data-f="memoryRoot" value="${esc(d.memoryRoot)}" placeholder="可与代码根不同"></label>
+      <label>Agent 适配器<select data-f="agent">${agents}</select></label>
+    </div>
+  </div>`;
+}
 
-  $('#form-project').addEventListener('submit', async e => {
-    e.preventDefault();
-    const obj = Object.fromEntries(new FormData(e.target).entries());
-    const projects = id
-      ? cfg.projects.map(x => x.id === id ? { ...x, ...obj } : x)
-      : [...cfg.projects, obj];
-    await saveConfig({ ...cfg, projects }, '项目配置已保存');
-  });
-
-  if (id) {
-    $('#btn-del-project').addEventListener('click', async () => {
-      if (!confirm(`删除项目「${id}」？\n只移除工作台配置，不删除任何记忆文件。`)) return;
-      await saveConfig({ ...cfg, projects: cfg.projects.filter(x => x.id !== id) }, '项目已移除');
-      S.active = null;
-      await loadState();
-    });
+function openProjectsForm(openId, addNew) {
+  $('#drawer-title').textContent = '项目';
+  $('#drawer-actions').innerHTML = '<button type="button" class="btn" id="btn-add-project">添加项目</button>';
+  $('#drawer-body').innerHTML = `
+    <div class="hint" style="margin-bottom:14px">projectRoot 是代码位置；memoryRoot 才是读取与写回记忆的位置，主题类子项目通常指向父仓。修改配置不会删除任何记忆文件。</div>
+    <div id="proj-cards">${S.config.projects.map(p => projectCard(p)).join('')}</div>
+    <div class="hint">每个项目独立保存：点卡片头部的「保存」只提交该卡片的修改，抽屉保持打开；点头部空白处收起/展开。</div>`;
+  if (openId) {
+    const card = $('#proj-cards').querySelector(`.agent-card[data-id="${CSS.escape(openId)}"]`);
+    if (card) card.classList.remove('collapsed');
   }
+  openDrawer();
+  $('#btn-add-project').addEventListener('click', () => {
+    $('#proj-cards').insertAdjacentHTML('beforeend', projectCard(null, true));
+  });
+  if (addNew) $('#btn-add-project').click();
 }
 
 function agentCard(key, a) {
@@ -420,6 +420,9 @@ function openAgentForm() {
 }
 
 $('#project-list').addEventListener('click', e => {
+  // 显式编辑入口：点卡片右上角 ✎ 打开配置抽屉并展开该项目卡片
+  const ed = e.target.closest('[data-edit-project]');
+  if (ed) { openProjectsForm(ed.dataset.editProject); return; }
   const b = e.target.closest('.proj');
   if (!b) return;
   S.active = b.dataset.id;
@@ -430,7 +433,7 @@ $('#project-list').addEventListener('click', e => {
 
 $('#project-list').addEventListener('dblclick', e => {
   const b = e.target.closest('.proj');
-  if (b) openProjectForm(b.dataset.id);
+  if (b) openProjectsForm(b.dataset.id);
 });
 
 $('#items-body').addEventListener('change', e => {
@@ -527,7 +530,7 @@ $('#btn-resync').addEventListener('click', async () => {
     else toast(`已按清单校准 · ${s.context ? '长期笔记 + ' : ''}当天日志（${r.items.length} 项）`);
   } catch (e) { toast(e.message, 'err'); }
 });
-$('#btn-project').addEventListener('click', () => openProjectForm());
+$('#btn-project').addEventListener('click', () => openProjectsForm(null, true));
 $('#btn-agent').addEventListener('click', openAgentForm);
 $('#btn-track').addEventListener('click', openTrackForm);
 $('#btn-theme').addEventListener('click', () => {
@@ -555,6 +558,39 @@ $('#drawer').addEventListener('click', async e => {
       dailyFile: get('dailyFile')
     };
     saveConfig({ ...S.config, agents }, `适配器「${agents[key].label || key}」已保存`, true);
+    return;
+  }
+  // 项目卡片「保存」：只提交该卡片的修改，抽屉保持打开；新卡保存成功后重渲染为已保存态
+  const sp = e.target.closest('[data-save-project]');
+  if (sp) {
+    const card = sp.closest('.agent-card');
+    const oldId = card.dataset.id;
+    const get = n => (card.querySelector(`[data-f="${n}"]`)?.value || '').trim();
+    const obj = {
+      id: oldId || get('id'),
+      name: get('name'),
+      projectRoot: get('projectRoot'),
+      memoryRoot: get('memoryRoot'),
+      agent: card.querySelector('[data-f="agent"]')?.value || ''
+    };
+    if (!/^[a-zA-Z0-9_-]+$/.test(obj.id)) { toast('项目 ID 为空或格式不符（仅限字母数字-_）', 'err'); return; }
+    if (!obj.name || !obj.projectRoot || !obj.memoryRoot) { toast('显示名称与两个路径均为必填', 'err'); return; }
+    if (!S.config.agents[obj.agent]) { toast('Agent 适配器不存在', 'err'); return; }
+    if (S.config.projects.some(p => p.id === obj.id && p.id !== oldId)) { toast('项目 ID 已存在', 'err'); return; }
+    const projects = oldId
+      ? S.config.projects.map(p => p.id === oldId ? { ...p, ...obj } : p)
+      : [...S.config.projects, obj];
+    const ok = await saveConfig({ ...S.config, projects }, `项目「${obj.name}」已保存`, true);
+    if (ok) openProjectsForm(obj.id);
+    return;
+  }
+  // 项目卡片「×」：从配置删除该项目（只移除配置，不动记忆文件）
+  const dp = e.target.closest('[data-del-project]');
+  if (dp) {
+    const id = dp.dataset.delProject;
+    if (!confirm(`删除项目「${id}」？\n只移除工作台配置，不删除任何记忆文件。`)) return;
+    await saveConfig({ ...S.config, projects: S.config.projects.filter(p => p.id !== id) }, '项目已移除', true);
+    openProjectsForm();
     return;
   }
   const del = e.target.closest('[data-del-agent]');
