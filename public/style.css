@@ -272,8 +272,14 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
 .agent-head .btn { padding: 2px 8px; font-size: 11px; }
 .agent-card.collapsed .tw { transform: rotate(-90deg); }
 .agent-card.collapsed .agent-body { display: none; }
-.agent-card label { display: grid; gap: 3px; font-size: 11px; color: var(--text-2); }
-.agent-card input { width: 100%; }
+.agent-body { display: grid; gap: 4px; }
+.agent-card label { display: grid; gap: 4px; font-size: 12px; color: var(--text-2); }
+.agent-card input, .agent-card select {
+  width: 100%;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 7px; padding: 5px 9px; outline: none;
+}
+.agent-card input:focus, .agent-card select:focus { border-color: var(--accent); }
 
 .toast {
   position: absolute; left: 50%; bottom: 26px; transform: translate(-50%, 12px);
