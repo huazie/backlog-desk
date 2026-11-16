@@ -4,6 +4,8 @@
 
 > 本地零依赖工作台，读取各项目 Agent 记忆目录下的改造清单，双向自动跟踪改造推进。
 
+[英文说明/English Documentation](README_EN.md)
+
 ## 快速开始
 
 ```bash
