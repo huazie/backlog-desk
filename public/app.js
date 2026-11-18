@@ -596,6 +596,11 @@ $('#drawer').addEventListener('click', async e => {
   const del = e.target.closest('[data-del-agent]');
   if (del) {
     const key = del.dataset.delAgent;
+    // 未保存的新增卡（data-key 不在已保存配置里）：纯 DOM 元素，直接移除，不走适配器校验
+    if (!S.config.agents[key]) {
+      del.closest('.agent-card').remove();
+      return;
+    }
     if (S.config.projects.some(p => p.agent === key)) {
       toast('仍有项目在使用该适配器，不能删除', 'err');
       return;
