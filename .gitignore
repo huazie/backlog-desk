@@ -153,6 +153,7 @@ node_modules/
 backups/
 history.jsonl
 release/
+build-demo/
 *.log
 *.tgz
 .env*

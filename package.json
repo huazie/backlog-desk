@@ -18,7 +18,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node tests/run.js",
-    "test:local": "node tests/smoke.js && node tests/sync-check.js && node tests/track-check.js"
+    "test:local": "node tests/smoke.js && node tests/sync-check.js && node tests/track-check.js",
+    "build:demo": "node scripts/build-demo.js"
   },
   "engines": {
     "node": ">=18"
