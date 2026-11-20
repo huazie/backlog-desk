@@ -328,6 +328,12 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
 .pri-tag[data-p="P1"] { color: var(--p1); border-color: var(--p1); }
 .pri-tag[data-p="P2"] { color: var(--p2); border-color: var(--p2); }
 .pri-tag[data-p="P3"] { color: var(--p3); border-color: var(--p3); }
+.demo-badge {
+  color: var(--warn); border-color: var(--warn);
+  /* 与顶栏 .btn 同款盒模型：等高（13/1.6 + 10 + 2 ≈ 33px）、同圆角、同字号 */
+  padding: 5px 12px; font-size: 13px; border-radius: 7px;
+  display: inline-flex; align-items: center;
+}
 .task-tip { margin-top: 10px; color: var(--text-3); font-size: 11px; line-height: 1.6; }
 .form .ck {
   display: flex; align-items: flex-start; gap: 10px;

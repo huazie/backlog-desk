@@ -25,6 +25,8 @@ function esc(v) {
 }
 
 async function api(url, method = 'GET', body) {
+  // 静态演示模式：demo.js 检测 ?demo=1 后挂载 __mockApi，全部请求走内存 mock（见 public/demo.js）
+  if (window.__mockApi) return window.__mockApi(url, method, body);
   const r = await fetch(url, {
     method,
     headers: body ? { 'Content-Type': 'application/json' } : {},
