@@ -169,8 +169,11 @@ function cmdSkill() {
     process.exitCode = 1;
     return;
   }
-  // 默认装当前项目（项目级技能目录），--global 装用户级，--dir 供自定义 / 测试
-  const base = args.includes('--global')
+  // 默认装当前项目（项目级技能目录），--global 装用户级，--dir 供自定义 / 测试；
+  // cwd 是主目录时「项目级」路径恰好与用户级重合——显式按用户级处理并如实提示，不靠巧合
+  const atHome = process.cwd() === os.homedir();
+  const asGlobal = args.includes('--global') || (!opt('--dir') && atHome);
+  const base = asGlobal
     ? path.join(os.homedir(), agentDir.dir, 'skills')
     : path.resolve(opt('--dir') || path.join(process.cwd(), agentDir.dir, 'skills'));
   const skillRoot = path.join(base, 'bdesk-collab');
@@ -199,8 +202,10 @@ function cmdSkill() {
     .split('{{MEMORY_DIR}}').join(agentDir.memoryDir);
   fs.writeFileSync(dest, text, 'utf8');
   console.log(`已安装 ${agent} 的 bdesk-collab skill：${dest}`);
-  console.log(args.includes('--global')
-    ? '生效范围：用户级技能目录，对该 agent 的所有项目生效。'
+  console.log(asGlobal
+    ? (args.includes('--global')
+      ? '生效范围：用户级技能目录，对该 agent 的所有项目生效。'
+      : '生效范围：用户级技能目录，对该 agent 的所有项目生效（当前目录即主目录，默认项目级落点与其重合，建议显式加 --global）。')
     : opt('--dir')
       ? '生效范围：指定的安装目录（--dir）。'
       : `生效范围：当前项目的项目级技能目录（${agentDir.dir}/skills/）。`);
@@ -214,7 +219,7 @@ function usage() {
   bdesk init [选项]        生成用户态配置 ~/.backlog-desk/config.json，已存在则不覆盖
   bdesk doctor [选项]      体检：项目路径、清单文件、配置端口占用
   bdesk demo [选项]        脱敏示例复制到临时目录启动（8788，包目录只读，不碰真实记忆）
-  bdesk skill [选项]       按 agent 安装「改造清单协作约定」skill（支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）；--global 装用户级；--uninstall 卸载
+  bdesk skill [选项]       按 agent 安装「改造清单协作约定」skill（支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）；更新用户级副本推荐 bdesk skill --force --global；--uninstall 卸载
   bdesk help               显示本帮助（等价 -h / --help）
   bdesk --version | -v     显示版本号
 
@@ -225,7 +230,7 @@ function usage() {
   --data-dir DIR   start / init / doctor：指定数据目录
   --from FILE      init：从既有配置导入（相对路径展开为绝对）
   --agent NAME     skill：目标 agent（默认 workbuddy；当前支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）
-  --global         skill：安装到用户级技能目录（默认当前项目）
+  --global         skill：安装到用户级技能目录（默认当前项目；主目录下默认落点与其重合，自动按用户级处理）
   --dir DIR        skill：指定安装根目录（默认当前项目技能目录）
   --uninstall      skill：卸载已安装的 bdesk-collab skill（用 --agent / --global / --dir 定位）
   --force          init / skill：覆盖已存在的配置 / skill 文件
