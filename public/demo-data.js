@@ -1,6 +1,6 @@
 // 由 scripts/gen-demo-data.js 自动生成（源：demo/ 脱敏示例，只读）；手工修改会被下次生成覆盖。
 window.DEMO_DATA = {
-  "generatedAt": "2026-11-20T16:00:01.683Z",
+  "generatedAt": "2026-11-22T15:51:11.870Z",
   "config": {
     "port": 8788,
     "syncToMemory": true,
@@ -71,7 +71,7 @@ window.DEMO_DATA = {
           "priority": "P1",
           "status": "done",
           "title": "详情页 meta 条重构",
-          "note": "已随 v0.4.0 发布",
+          "note": "commit a1b2c3d 已推送（v0.4.0 发布）",
           "updated": "2026-11-05"
         },
         {
@@ -135,7 +135,7 @@ window.DEMO_DATA = {
           "priority": "P2",
           "status": "done",
           "title": "帮助文案中英双语",
-          "note": "已随 v0.2.1 发布",
+          "note": "commit e4f5a6b 已提交（待推送）",
           "updated": "2026-11-05"
         },
         {
@@ -145,6 +145,14 @@ window.DEMO_DATA = {
           "title": "补充CHANGELOG 生成脚本",
           "note": "从 commit 规范聚合",
           "updated": "2026-11-02"
+        },
+        {
+          "id": "5",
+          "priority": "P2",
+          "status": "done",
+          "title": "错误码统一编码（示例数据）",
+          "note": "覆盖 CLI 全部退出路径，未提交",
+          "updated": "2026-11-04"
         }
       ],
       "lastSync": "2026-11-09 10:00",
@@ -154,7 +162,7 @@ window.DEMO_DATA = {
         "contextFiles": [
           {
             "name": "MEMORY.md",
-            "content": "# 项目长期笔记（sample-cli 示例工具）\r\n\r\n## 改造清单决策\r\n\r\n- 2026-11-07：#2 Windows 路径问题升级为 P0，用户报告量增加。\r\n\r\n## 其它\r\n\r\n- 本文件为 demo 演示数据，历史条目中的优先级与状态仅作留痕。\r\n\r\n<!-- backlog-sync:begin -->\r\n## 改造清单 · 当前状态镜像（工作台自动维护）\r\n\r\n> 最后同步：2026-11-09 10:00 ｜ 唯一权威源：同目录 `改造清单.md` 的 `<!-- backlog:begin -->` / `<!-- backlog:end -->` 区块。\r\n> 汇总：共 4 项 ｜ 待办 2 ｜ 进行中 0 ｜ 已完成 1 ｜ 已移除 0。\r\n> 清单指纹：`0000000000000000`（工作台自动维护，用于检测外部改动后镜像是否滞后）。\r\n\r\n| # | 优先级 | 状态 | 改造项 |\r\n| --- | --- | --- | --- |\r\n| 1 | P1 | 待办 | 输出格式支持 JSON（示例数据） |\r\n| 2 | P0 | 待办 | 修复 Windows 路径分隔符问题 |\r\n| 3 | P2 | 已完成 | 帮助文案中英双语 |\r\n| 4 | P3 | 待办 | 补充CHANGELOG 生成脚本 |\r\n\r\n<!-- backlog-sync:end -->\r\n"
+            "content": "# 项目长期笔记（sample-cli 示例工具）\r\n\r\n## 改造清单决策\r\n\r\n- 2026-11-07：#2 Windows 路径问题升级为 P0，用户报告量增加。\r\n\r\n## 其它\r\n\r\n- 本文件为 demo 演示数据，历史条目中的优先级与状态仅作留痕。\r\n\r\n<!-- backlog-sync:begin -->\r\n## 改造清单 · 当前状态镜像（工作台自动维护）\r\n\r\n> 最后同步：2026-11-09 10:00 ｜ 唯一权威源：同目录 `改造清单.md` 的 `<!-- backlog:begin -->` / `<!-- backlog:end -->` 区块。\r\n> 汇总：共 5 项 ｜ 待办 2 ｜ 进行中 0 ｜ 已完成 2 ｜ 已移除 0。\r\n> 清单指纹：`0000000000000000`（工作台自动维护，用于检测外部改动后镜像是否滞后）。\r\n\r\n| # | 优先级 | 状态 | 改造项 |\r\n| --- | --- | --- | --- |\r\n| 1 | P1 | 待办 | 输出格式支持 JSON（示例数据） |\r\n| 2 | P0 | 待办 | 修复 Windows 路径分隔符问题 |\r\n| 3 | P2 | 已完成 | 帮助文案中英双语 |\r\n| 4 | P3 | 待办 | 补充CHANGELOG 生成脚本 |\r\n| 5 | P2 | 已完成 | 错误码统一编码（示例数据） |\r\n\r\n<!-- backlog-sync:end -->\r\n"
           }
         ],
         "dailyLogs": [
