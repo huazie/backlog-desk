@@ -192,7 +192,7 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
 .items tr.s-done .c-title input { color: var(--text-2); }
 .c-id { width: 42px; color: var(--text-3); font-size: 12px; }
 .c-pri { width: 82px; }
-.c-status { width: 96px; }
+.c-status { width: 120px; }
 .c-title { min-width: 170px; }
 .c-note { min-width: 220px; }
 .c-date { width: 92px; color: var(--text-3); font-size: 11px; white-space: nowrap; }
@@ -214,6 +214,13 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
 .cell-sel[data-s="doing"] { color: var(--warn); }
 .cell-sel[data-s="done"] { color: var(--ok); }
 .cell-sel[data-s="removed"] { color: var(--text-3); }
+/* 提交状态徽标（#22）：done 条目按 note 提交留痕显示 已推送 / 已提交 / 未提交 */
+.st-wrap { display: flex; align-items: center; gap: 5px; }
+.st-wrap .cell-sel { flex: 1; min-width: 0; }
+.git-ico { flex-shrink: 0; }
+.git-ico.b-pushed { color: var(--ok); }
+.git-ico.b-committed { color: var(--accent); }
+.git-ico.b-uncommitted { color: var(--warn); }
 .op {
   border: none; background: transparent; color: var(--text-3);
   cursor: pointer; padding: 3px 5px; border-radius: 5px; font-size: 12px;

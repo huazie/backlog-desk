@@ -129,6 +129,27 @@ function renderProjects() {
   }).join('') || '<div class="muted">暂无项目，点「项目配置」开始</div>';
 }
 
+// 提交状态图标：解析 note 中既有提交留痕文本（零清单格式变更，存量行自动生效）。
+// 优先级 已推送 > 已提交 > 未提交；done 条目三态兜底（前两个未命中即未提交），非 done 不显示
+// git 生命周期 SVG（currentColor 随三态配色）：实心圆+上箭头=已推送、环形节点=已提交、虚线空圈=未提交
+const GIT_ICONS = {
+  pushed: '<circle cx="8" cy="10" r="4.5" fill="currentColor"/><path d="M8 6.2V1.8M5.8 4 8 1.8 10.2 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  committed: '<circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.8" fill="currentColor"/>',
+  uncommitted: '<circle cx="8" cy="8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2.2 2"/><circle cx="8" cy="8" r="1" fill="currentColor"/>'
+};
+function commitBadge(it) {
+  if (it.status !== 'done') return '';
+  const n = it.note || '';
+  // 唯一留痕锚：「commit + hash」约定格式（bare hash / 裸「已推送」字样一律不认，
+  // 避免 note 元文本——如描述本功能的验收文案——被误判）
+  const m = n.match(/\bcommit\s+([0-9a-f]{7,40})\b/i);
+  if (!m) return ['uncommitted', '未提交', 'note 未记载 commit 留痕（约定格式：commit + hash），代码可能仍在工作区'];
+  // 「已推送」仅在 hash 之后的近邻窗口内认定，远处出现该字样不影响判定
+  const after = n.slice(m.index + m[0].length, m.index + m[0].length + 80);
+  if (/已推送|已在远端/.test(after)) return ['pushed', '已推送', 'note 记载代码已推送远端'];
+  return ['committed', '已提交', 'note 记载代码已 commit（本地）'];
+}
+
 function renderBoard() {
   const ae = document.activeElement;
   if (ae && ae.closest && ae.closest('#items-body') && (ae.tagName === 'INPUT' || ae.tagName === 'SELECT')) {
@@ -167,10 +188,13 @@ function renderBoard() {
       const locked = (v === 'done' || v === 'removed') && v !== it.status;
       return `<option value="${v}" ${v === it.status ? 'selected' : ''}${locked ? ' disabled' : ''}>${l}</option>`;
     }).join('');
+    const badge = commitBadge(it);
+    const badgeHtml = badge
+      ? `<svg class="git-ico b-${badge[0]}" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><title>${esc(badge[1])}：${esc(badge[2])}</title>${GIT_ICONS[badge[0]]}</svg>` : '';
     return `<tr data-id="${esc(it.id)}" class="s-${esc(it.status)}">
       <td class="c-id mono">#${esc(it.id)}</td>
       <td><select class="cell-sel" data-field="priority" data-p="${esc(it.priority)}">${optP}</select></td>
-      <td><select class="cell-sel" data-field="status" data-s="${esc(it.status)}">${optS}</select></td>
+      <td><span class="st-wrap"><select class="cell-sel" data-field="status" data-s="${esc(it.status)}">${optS}</select>${badgeHtml}</span></td>
       <td><input class="cell-input" data-field="title" value="${esc(it.title)}" title="${esc(it.title)}"></td>
       <td><input class="cell-input note" data-field="note" value="${esc(it.note)}" title="${esc(it.note)}"></td>
       <td class="c-date mono">${esc(it.updated)}</td>
