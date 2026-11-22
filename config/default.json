@@ -7,6 +7,7 @@
   "agents": {
     "workbuddy": {
       "label": "WorkBuddy",
+      "skillDir": ".workbuddy",
       "memoryDir": ".workbuddy/memory",
       "backlogFile": "改造清单.md",
       "contextFiles": [

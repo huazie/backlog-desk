@@ -134,6 +134,12 @@ function validateConfig(cfg) {
   }
   for (const [key, a] of Object.entries(cfg.agents)) {
     if (!a.memoryDir || !a.backlogFile) throw new Error(`Agent ${key} 缺少 memoryDir 或 backlogFile`);
+    // skillDir 非空时必须是单个目录名（相对用户主目录或项目根的技能根目录，如 .claude）；留空 = 不支持 skill 安装
+    if (a.skillDir != null && String(a.skillDir).trim()) {
+      if (isAbsoluteAny(String(a.skillDir)) || /[\\/]/.test(String(a.skillDir)) || String(a.skillDir).split(/[\\/]/).includes('..')) {
+        throw new Error(`Agent ${key} 的 skillDir 必须是单个目录名（如 .claude）`);
+      }
+    }
     for (const k of ['memoryDir', 'backlogFile', 'syncFile', 'dailyFile']) {
       if (!a[k]) continue;
       const v = String(a[k]);

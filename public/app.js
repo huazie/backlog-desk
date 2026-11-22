@@ -388,6 +388,7 @@ function agentCard(key, a) {
     <div class="agent-body">
     ${field('label', a.label || '', '显示名称')}
     ${field('memoryDir', a.memoryDir || '', '记忆目录 memoryDir')}
+    <label><span class="lbl-row">技能根目录 skillDir（留空 = 不支持 skill 安装）<span class="tip"><svg class="tip-i" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><rect x="7.35" y="7.1" width="1.3" height="4.1" rx="0.65" fill="currentColor"/><circle cx="8" cy="4.9" r="0.95" fill="currentColor"/></svg><span class="tip-box">该 Agent 技能根目录的目录名（单个目录名，如 <code>.claude</code> / <code>.trae-cn</code>）。配置后可用 <code>bdesk skill --agent &lt;名字&gt;</code> 安装「改造清单协作约定」skill：项目级装 <code>&lt;项目根&gt;/&lt;skillDir&gt;/skills/</code>，用户级（--global）装 <code>~&lt;/skillDir&gt;/skills/</code>。留空 = 不支持 skill 安装。</span></span></span><input data-f="skillDir" value="${esc(a.skillDir || '')}" placeholder="如 .claude，须为单个目录名"></label>
     ${field('backlogFile', a.backlogFile || '', '清单文件名 backlogFile')}
     ${field('contextFiles', (a.contextFiles || []).join(','), '长期笔记 contextFiles（逗号分隔）')}
     ${field('syncFile', a.syncFile || '', '状态镜像 syncFile（留空取上面第一个）')}
@@ -402,7 +403,7 @@ function openAgentForm() {
   $('#drawer-title').textContent = 'Agent 适配器';
   $('#drawer-actions').innerHTML = '<button type="button" class="btn" id="btn-add-agent">新增适配器</button>';
   $('#drawer-body').innerHTML = `
-    <div class="hint" style="margin-bottom:14px">不同 Agent 只是记忆目录与文件名不同。新增适配器后，在项目配置里选它即可。<code>syncFile</code> 是状态镜像写入的长期笔记（留空取 contextFiles 第一个）；<code>dailyFile</code> 是当天日志文件名模板，<code>{date}</code> 会替换为本地日期。其他 Agent 的目录约定请以其实际文档 / 磁盘目录为准。</div>
+    <div class="hint" style="margin-bottom:14px">不同 Agent 只是记忆目录与文件名不同。新增适配器后，在项目配置里选它即可。<code>syncFile</code> 是状态镜像写入的长期笔记（留空取 contextFiles 第一个）；<code>dailyFile</code> 是当天日志文件名模板，<code>{date}</code> 会替换为本地日期；<code>skillDir</code> 配置后可用 <code>bdesk skill --agent &lt;名字&gt;</code> 安装协作约定 skill（留空 = 不支持安装）。其他 Agent 的目录约定请以其实际文档 / 磁盘目录为准。</div>
     <div id="agent-cards">${Object.entries(cfg.agents).map(([k, a]) => agentCard(k, a)).join('')}</div>
     <div class="hint">每个适配器独立保存：点卡片头部的「保存」只提交该卡片的修改，抽屉保持打开。</div>`;
   openDrawer();
@@ -416,7 +417,7 @@ function openAgentForm() {
     $('#agent-cards').insertAdjacentHTML('beforeend', agentCard(key, {
       label: key, memoryDir: '.', backlogFile: '改造清单.md',
       contextFiles: [], syncFile: '', dailyPattern: '^\\d{4}-\\d{2}-\\d{2}\\.md$',
-      dailyFile: '{date}.md'
+      dailyFile: '{date}.md', skillDir: ''
     }));
   });
 }
@@ -557,7 +558,8 @@ $('#drawer').addEventListener('click', async e => {
       contextFiles: get('contextFiles').split(',').map(s => s.trim()).filter(Boolean),
       syncFile: get('syncFile'),
       dailyPattern: get('dailyPattern'),
-      dailyFile: get('dailyFile')
+      dailyFile: get('dailyFile'),
+      skillDir: get('skillDir')
     };
     saveConfig({ ...S.config, agents }, `适配器「${agents[key].label || key}」已保存`, true);
     return;

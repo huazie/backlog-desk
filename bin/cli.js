@@ -13,12 +13,23 @@ const srv = require('../server.js');
 
 const args = process.argv.slice(2);
 
-// skill 安装支持的 agent 元数据：dir = 技能根目录名（项目级 <cwd>/<dir>/skills、用户级 ~/<dir>/skills），
-// memoryDir = 该 agent 的默认记忆目录（注入模板文档用）。后续支持其他 agent 时在此追加映射即可
-// 注意：必须声明在顶部 -h 快路径之前，usage() 的动态 agent 列表依赖它
-const SKILL_AGENT_DIR = {
-  workbuddy: { dir: '.workbuddy', memoryDir: '.workbuddy/memory' }
-};
+// skill 安装的 agent 元数据改为 config 驱动（单一权威源）：以包内置 config/default.json 的 agents
+// 为基础，合并用户态配置的 agents（同名适配器逐字段浅合并、用户优先）；适配器声明 skillDir
+//（技能根目录名）即可 bdesk skill --agent <名字> 安装。必须声明在顶部 -h 快路径之前，usage() 的
+// 动态 agent 列表依赖它
+function skillAgents() {
+  let agents;
+  try {
+    agents = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'default.json'), 'utf8')).agents || {};
+  } catch (e) {
+    return {};
+  }
+  try {
+    const user = srv.loadConfig().agents || {};
+    for (const [k, v] of Object.entries(user)) agents[k] = { ...agents[k], ...v };
+  } catch (e) { /* 用户配置缺失或损坏时仅用内置适配器 */ }
+  return agents;
+}
 
 const cmd = args[0] && !args[0].startsWith('-') ? args[0] : 'start';
 const opt = name => {
@@ -152,9 +163,15 @@ function cmdDemo() {
 
 function cmdSkill() {
   const agent = opt('--agent') || 'workbuddy';
-  const agentDir = SKILL_AGENT_DIR[agent];
+  const agents = skillAgents();
+  const agentDir = agents[agent];
   if (!agentDir) {
-    console.error(`暂不支持的 agent：${agent}（当前支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）`);
+    console.error(`暂不支持的 agent：${agent}（当前支持：${Object.keys(agents).join(' / ')}）`);
+    process.exitCode = 1;
+    return;
+  }
+  if (!agentDir.skillDir) {
+    console.error(`适配器 ${agent} 未声明 skillDir（技能根目录名，如 .claude），暂不支持 skill 安装`);
     process.exitCode = 1;
     return;
   }
@@ -174,8 +191,8 @@ function cmdSkill() {
   const atHome = process.cwd() === os.homedir();
   const asGlobal = args.includes('--global') || (!opt('--dir') && atHome);
   const base = asGlobal
-    ? path.join(os.homedir(), agentDir.dir, 'skills')
-    : path.resolve(opt('--dir') || path.join(process.cwd(), agentDir.dir, 'skills'));
+    ? path.join(os.homedir(), agentDir.skillDir, 'skills')
+    : path.resolve(opt('--dir') || path.join(process.cwd(), agentDir.skillDir, 'skills'));
   const skillRoot = path.join(base, 'bdesk-collab');
   // --uninstall 卸载：只删 bdesk-collab 目录本身，不碰技能根目录下的其他技能
   if (args.includes('--uninstall')) {
@@ -194,12 +211,15 @@ function cmdSkill() {
   }
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   // 占位符按 agent 注入：通用模板 skill/SKILL.md 不写死任何 agent 的路径；
-  // split/join 而非正则 replace，路径含 $& 等字符也不会被误展开
+  // split/join 而非正则 replace，路径含 $& 等字符也不会被误展开。
+  // 注入文本取适配器的 memoryHint（说明文本，用于记忆路径不固定的适配器），否则用 memoryDir
+  const memDirText = agentDir.memoryHint || agentDir.memoryDir
+    || '由项目配置的 memoryRoot 指定（该适配器无固定记忆目录）';
   const text = fs.readFileSync(src, 'utf8')
     .split('{{AGENT}}').join(agent)
-    .split('{{SKILLS_DIR}}').join(`${agentDir.dir}/skills`)
-    .split('{{HOME_SKILLS_DIR}}').join(`~/${agentDir.dir}/skills`)
-    .split('{{MEMORY_DIR}}').join(agentDir.memoryDir);
+    .split('{{SKILLS_DIR}}').join(`${agentDir.skillDir}/skills`)
+    .split('{{HOME_SKILLS_DIR}}').join(`~/${agentDir.skillDir}/skills`)
+    .split('{{MEMORY_DIR}}').join(memDirText);
   fs.writeFileSync(dest, text, 'utf8');
   console.log(`已安装 ${agent} 的 bdesk-collab skill：${dest}`);
   console.log(asGlobal
@@ -208,7 +228,7 @@ function cmdSkill() {
       : '生效范围：用户级技能目录，对该 agent 的所有项目生效（当前目录即主目录，默认项目级落点与其重合，建议显式加 --global）。')
     : opt('--dir')
       ? '生效范围：指定的安装目录（--dir）。'
-      : `生效范围：当前项目的项目级技能目录（${agentDir.dir}/skills/）。`);
+      : `生效范围：当前项目的项目级技能目录（${agentDir.skillDir}/skills/）。`);
 }
 
 function usage() {
@@ -219,7 +239,7 @@ function usage() {
   bdesk init [选项]        生成用户态配置 ~/.backlog-desk/config.json，已存在则不覆盖
   bdesk doctor [选项]      体检：项目路径、清单文件、配置端口占用
   bdesk demo [选项]        脱敏示例复制到临时目录启动（8788，包目录只读，不碰真实记忆）
-  bdesk skill [选项]       按 agent 安装「改造清单协作约定」skill（支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）；更新用户级副本推荐 bdesk skill --force --global；--uninstall 卸载
+  bdesk skill [选项]       按 agent 安装「改造清单协作约定」skill（支持：${Object.keys(skillAgents()).join(' / ')}）；更新用户级副本推荐 bdesk skill --force --global；--uninstall 卸载
   bdesk help               显示本帮助（等价 -h / --help）
   bdesk --version | -v     显示版本号
 
@@ -229,7 +249,7 @@ function usage() {
   --config FILE    start / doctor：指定配置文件
   --data-dir DIR   start / init / doctor：指定数据目录
   --from FILE      init：从既有配置导入（相对路径展开为绝对）
-  --agent NAME     skill：目标 agent（默认 workbuddy；当前支持：${Object.keys(SKILL_AGENT_DIR).join(' / ')}）
+  --agent NAME     skill：目标 agent（默认 workbuddy；当前支持：${Object.keys(skillAgents()).join(' / ')}）
   --global         skill：安装到用户级技能目录（默认当前项目；主目录下默认落点与其重合，自动按用户级处理）
   --dir DIR        skill：指定安装根目录（默认当前项目技能目录）
   --uninstall      skill：卸载已安装的 bdesk-collab skill（用 --agent / --global / --dir 定位）

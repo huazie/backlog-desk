@@ -43,7 +43,7 @@ bdesk skill                        # install the collaboration convention skill 
 | `bdesk help` | Show full help (equivalent to `-h` / `--help`) |
 | `bdesk --version` | Show version (equivalent to `-v`) |
 
-> Adding support for a new agent: add one mapping `{ dir: '<skills root dir name>', memoryDir: '<default memory dir>' }` to `SKILL_AGENT_DIR` in `bin/cli.js`, and `bdesk skill --agent <name>` works right away (template paths are injected automatically via placeholders with the generic body untouched; create `skill/<agent>/SKILL.md` to override the whole body for a specific agent).
+> Adding support for a new agent: adapters are config-driven (single source of truth) — add an adapter with a `skillDir` field (skills root dir name, e.g. `.claude`) via the "Agent Config" drawer or the `agents` section of `config`, and `bdesk skill --agent <name>` works right away (template paths and memory notes are injected automatically via `skillDir` / `memoryHint` / `memoryDir` placeholders with the generic body untouched; create `skill/<agent>/SKILL.md` to override the whole body for a specific agent). Same-name adapters in the user-level config override the built-in ones field by field.
 
 ## Common Options
 
@@ -125,7 +125,7 @@ All three scripts automatically restore the config, `history.jsonl` and temp dir
 |---|---|
 | Switch project | Click in the left project bar; double-click a project card to edit |
 | Add project | "Add Project" at the top, fill in `projectRoot` / `memoryRoot` / Agent adapter (supports `~/` paths) |
-| Configure other agents | "Agent Config" at the top → "Add Adapter" at the drawer's top-right; each adapter card is edited independently, the header "Save" commits only that card and keeps the drawer open; click a card header to collapse/expand; deleting a card "×" asks for confirmation (not allowed when the adapter is used by a project or is the last one) → fill in `memoryDir` / `backlogFile` / `contextFiles` / `syncFile` / `dailyFile`, then select it in a project |
+| Configure other agents | "Agent Config" at the top → "Add Adapter" at the drawer's top-right; each adapter card is edited independently, the header "Save" commits only that card and keeps the drawer open; click a card header to collapse/expand; deleting a card "×" asks for confirmation (not allowed when the adapter is used by a project or is the last one) → fill in `memoryDir` / `backlogFile` / `contextFiles` / `syncFile` / `dailyFile` / `skillDir` (skills root dir name; when set, `bdesk skill --agent <name>` can install, empty = not supported), then select it in a project |
 | Add backlog item | Fill in title, priority and notes above the table → "Add" |
 | Change priority / status / text | Use dropdowns or inputs in the table; saved and written back on blur |
 | Remove backlog item | "Remove" = mark `removed` and keep the decision record; "×" = delete permanently (double confirmation, with pre-write backup) |
