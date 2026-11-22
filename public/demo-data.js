@@ -1,7 +1,7 @@
 // 由 scripts/gen-demo-data.js 自动生成（源：demo/ 脱敏示例，只读）；手工修改会被下次生成覆盖。
 window.DEMO_DATA = {
-  "generatedAt": "2026-11-22T16:12:31.573Z",
-  "dataVersion": "vv1lmg",
+  "generatedAt": "2026-11-22T17:36:50.470Z",
+  "dataVersion": "1fyg59i",
   "config": {
     "port": 8788,
     "syncToMemory": true,
@@ -12,6 +12,7 @@ window.DEMO_DATA = {
       "workbuddy": {
         "label": "WorkBuddy",
         "memoryDir": ".workbuddy/memory",
+        "skillDir": ".workbuddy",
         "backlogFile": "改造清单.md",
         "contextFiles": [
           "MEMORY.md"

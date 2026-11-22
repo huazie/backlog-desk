@@ -8,6 +8,7 @@
     "workbuddy": {
       "label": "WorkBuddy",
       "memoryDir": ".workbuddy/memory",
+      "skillDir": ".workbuddy",
       "backlogFile": "改造清单.md",
       "contextFiles": ["MEMORY.md"],
       "syncFile": "MEMORY.md",

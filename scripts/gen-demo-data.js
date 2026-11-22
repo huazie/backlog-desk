@@ -15,10 +15,11 @@ const OUT_FILE = path.join(ROOT, 'public', 'demo-data.js');
 const MARK_BEGIN = '<!-- backlog:begin -->';
 const MARK_END = '<!-- backlog:end -->';
 
-// 演示数据版本指纹：djb2 hash 所有项目条目（id/状态/标题/note），条目内容变则版本变
-function hashItems(projects) {
-  const raw = Object.entries(projects)
-    .map(([pid, p]) => pid + ':' + p.items.map(i => `${i.id}|${i.status}|${i.title}|${i.note}`).join(';'))
+// 演示数据版本指纹：djb2 hash 适配器配置与所有项目条目（id/状态/标题/note），任一变化则版本变
+function hashItems(projects, agents) {
+  const raw = Object.entries(agents || {}).map(([k, a]) => 'agent:' + k + ':' + JSON.stringify(a))
+    .concat(Object.entries(projects)
+      .map(([pid, p]) => pid + ':' + p.items.map(i => `${i.id}|${i.status}|${i.title}|${i.note}`).join(';')))
     .sort().join('\n');
   let h = 5381;
   for (let i = 0; i < raw.length; i++) h = ((h << 5) + h + raw.charCodeAt(i)) >>> 0;
@@ -112,7 +113,7 @@ function generate() {
     generatedAt: new Date().toISOString(),
     // 演示数据版本：仅由条目内容决定（generatedAt 每次变化，不参与）；
     // demo.js 用它感知示例数据更新——本机 localStorage 缓存的旧数据会自动重置
-    dataVersion: hashItems(projects),
+    dataVersion: hashItems(projects, agents),
     config: {
       port: 8788,
       syncToMemory: raw.syncToMemory !== false,
