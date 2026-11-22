@@ -105,9 +105,10 @@ Agent 每次在清单落行 / 改行后，必须立即自检，全部通过才�
 
 改造项对应代码 **commit 或 push 的同一轮**，必须同步更新该行，不留滞后：
 
-1. commit 后：按进度更新该行 —— 改造已全部完成置 `done`；仍有后续步骤保持 `doing`，并在 `note` 记 commit hash 留痕；`updated` 改为今天。
-2. push 后：复核该行，若仍停在 `doing`，此时置 `done`；hash 保留在 `note` 作留痕。
-3. 只改 `status` / `note` / `updated`，不删行、不重排 ID；镜像与日志由工作台自动校准。
+1. commit 后：按进度更新该行 —— 改造已全部完成置 `done`；仍有后续步骤保持 `doing`，并在 `note` 按约定格式记留痕：**`commit <hash> 已提交` / `commit <hash> 待推送` / `commit <hash> 已推送`**（「commit」字样 + 空格 + hash 开头，看板徽标按此格式解析；裸 hash、纯文字描述不含此格式则视为未提交）；`updated` 改为今天。
+2. push 后：复核该行，若仍停在 `doing`，此时置 `done`；把 `note` 中留痕改为 `commit <hash> 已推送`；`updated` 改为今天。
+3. **批量推送搭车复核**：批量推送 / merge 往往顺带把早期条目的 commit 带入远端——推送完成后应复核整份清单，把 hash 已在远端的行留痕一律改为 `commit <hash> 已推送`（可逐条 `git merge-base --is-ancestor <hash> origin/main` 验证），不留滞后；blog 等子仓库推送同理按各自远端验证。
+4. 只改 `status` / `note` / `updated`，不删行、不重排 ID；镜像与日志由工作台自动校准。
 
 ## 7. bdesk 命令速查
 
