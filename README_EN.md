@@ -24,7 +24,7 @@ Open `http://127.0.0.1:8787` in your browser. By default it only listens on `127
 For first use it is recommended to generate the user-level config first (defaults to `~/.backlog-desk/`); it also starts without it, but the project list will be empty:
 
 ```bash
-bdesk init                         # generate an empty config template, then register projects in the "Add Project" page
+bdesk init                         # generate an empty config template, then register projects in the "Project Config" page
 bdesk init --from ./my-config.json # import from an existing config
 bdesk doctor                       # health check: project paths, backlog files, config and port conflicts
 bdesk demo                         # copy the sanitized example to a temp directory and start (8788); demo/ inside the package is read-only
@@ -124,7 +124,7 @@ All three scripts automatically restore the config, `history.jsonl` and temp dir
 | Feature | How to use |
 |---|---|
 | Switch project | Click in the left project bar; double-click a project card to edit |
-| Add project | "Add Project" at the top, fill in `projectRoot` / `memoryRoot` / Agent adapter (supports `~/` paths) |
+| Project config | "Project Config" button at the top, fill in `projectRoot` / `memoryRoot` / Agent adapter (supports `~/` paths) |
 | Configure other agents | "Agent Config" at the top → "Add Adapter" at the drawer's top-right; each adapter card is edited independently, the header "Save" commits only that card and keeps the drawer open; click a card header to collapse/expand; deleting a card "×" asks for confirmation (not allowed when the adapter is used by a project or is the last one) → fill in `memoryDir` / `backlogFile` / `contextFiles` / `syncFile` / `dailyFile` / `skillDir` (skills root dir name; when set, `bdesk skill --agent <name>` can install, empty = not supported), then select it in a project |
 | Add backlog item | Fill in title, priority and notes above the table → "Add" |
 | Change priority / status / text | Use dropdowns or inputs in the table; saved and written back on blur |

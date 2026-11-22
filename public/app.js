@@ -126,7 +126,7 @@ function renderProjects() {
       <span class="proj-path ${bad ? 'bad' : ''}">${bad ? '路径异常，请检查配置' : '记忆根可达'}</span>
       <button class="op" data-edit-project="${esc(p.id)}" title="编辑项目">✎</button>
     </div>`;
-  }).join('') || '<div class="muted">暂无项目，点「添加项目」开始</div>';
+  }).join('') || '<div class="muted">暂无项目，点「项目配置」开始</div>';
 }
 
 function renderBoard() {
@@ -377,10 +377,10 @@ function openProjectsForm(openId, addNew) {
   if (addNew) $('#btn-add-project').click();
 }
 
-function agentCard(key, a) {
+function agentCard(key, a, isNew) {
   const field = (name, value, label) =>
     `<label>${label}<input data-f="${name}" value="${esc(value)}"></label>`;
-  return `<div class="agent-card" data-key="${esc(key)}">
+  return `<div class="agent-card ${!isNew ? 'collapsed' : ''}" data-key="${esc(key)}">
     <div class="agent-head"><b>${esc(a.label || key)}</b><code>${esc(key)}</code>
       <span class="tw">▾</span>
       <button class="btn ghost" data-save-agent="${esc(key)}" title="仅保存该适配器">保存</button>
@@ -418,7 +418,7 @@ function openAgentForm() {
       label: key, memoryDir: '.', backlogFile: '改造清单.md',
       contextFiles: [], syncFile: '', dailyPattern: '^\\d{4}-\\d{2}-\\d{2}\\.md$',
       dailyFile: '{date}.md', skillDir: ''
-    }));
+    }, true));
   });
 }
 

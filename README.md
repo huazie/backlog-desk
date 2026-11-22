@@ -24,7 +24,7 @@ bdesk                 # 等价于 bdesk start
 首次使用建议先生成用户态配置（默认落 `~/.backlog-desk/`）；不生成也能启动，只是项目列表为空：
 
 ```bash
-bdesk init                         # 生成空配置模板，之后在页面「添加项目」中登记项目
+bdesk init                         # 生成空配置模板，之后在页面「项目配置」中登记项目
 bdesk init --from ./我的配置.json   # 从既有配置导入
 bdesk doctor                       # 体检：项目路径、清单文件、配置端口占用
 bdesk demo                         # 示例复制到临时目录启动（8788），包内 demo/ 只读
@@ -124,7 +124,7 @@ npm run test:local         # 等价于依次跑 tests/smoke.js、sync-check.js�
 | 功能 | 操作 |
 |---|---|
 | 切换项目 | 左侧项目栏单击；双击项目卡片进入编辑 |
-| 添加项目 | 顶部「添加项目」，填 `projectRoot` / `memoryRoot` / Agent 适配器（支持 `~/` 路径） |
+| 项目配置 | 顶部「项目配置」按钮，填 `projectRoot` / `memoryRoot` / Agent 适配器（支持 `~/` 路径） |
 | 配置其他 Agent | 顶部「Agent 配置」→ 抽屉右上角「新增适配器」；每个适配器卡片独立编辑，头部「保存」仅提交该卡片且抽屉保持打开，点卡片头部可收起/展开；删除卡片「×」二次确认（被项目占用或仅剩一个时不可删）→ 填 `memoryDir` / `backlogFile` / `contextFiles` / `syncFile` / `dailyFile` / `skillDir`（技能根目录名，配置后可 `bdesk skill --agent <名字>` 安装，留空不支持），再到项目里选它 |
 | 新增改造项 | 表格上方填标题、优先级、说明 →「添加」 |
 | 改优先级 / 状态 / 文案 | 表格内下拉或输入框，失焦即保存并写回 |
