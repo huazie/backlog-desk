@@ -23,10 +23,13 @@
   };
   const clone = v => JSON.parse(JSON.stringify(v));
 
-  // 会话存储：优先恢复本机改动，否则从生成数据深拷贝
+  // 会话存储：优先恢复本机改动，否则从生成数据深拷贝；
+  // 但 DEMO_DATA 条目内容已更新（dataVersion 变化）时本机缓存作废——示例数据为准，自动重置
   let store;
   try { store = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (_) { store = null; }
-  if (!store || !store.config) {
+  const stale = store && store.config && store.dataVersion !== window.DEMO_DATA.dataVersion;
+  if (!store || !store.config || stale) {
+    if (stale) console.info('[demo] 演示示例数据已更新，本机演示改动已重置为最新示例');
     store = clone(window.DEMO_DATA);
     store.tasks = [];
     persist();

@@ -1,6 +1,7 @@
 // 由 scripts/gen-demo-data.js 自动生成（源：demo/ 脱敏示例，只读）；手工修改会被下次生成覆盖。
 window.DEMO_DATA = {
-  "generatedAt": "2026-11-22T15:51:11.870Z",
+  "generatedAt": "2026-11-22T16:12:31.573Z",
+  "dataVersion": "vv1lmg",
   "config": {
     "port": 8788,
     "syncToMemory": true,
