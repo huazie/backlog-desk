@@ -38,6 +38,8 @@ async function api(url, method = 'GET', body) {
 }
 
 const activeProject = () => S.projects.find(p => p.id === S.active);
+// 项目选择持久化 key：演示态独立，避免 demo 页的选择记忆与真实页互相覆盖（demo.js 先于本文件挂载 __mockApi）
+const PROJ_KEY = window.__mockApi ? 'pbw-project-demo' : 'pbw-project';
 const activeMtime = () => activeProject()?.mtime ?? null;
 const activeUrl = () => '/api/items/' + encodeURIComponent(S.active);
 const activeTasks = () => S.tasks.filter(t => t.project === S.active);
@@ -59,11 +61,11 @@ async function loadState(withMemory = true) {
   S.track = d.track || null;
   lastMtimes = d.projects.map(p => `${p.id}:${p.mtime}`).join('|');
   // 记住上次选中的项目：刷新/重开页面后恢复；项目已不存在则回落第一个并清理记录
-  const saved = localStorage.getItem('pbw-project');
+  const saved = localStorage.getItem(PROJ_KEY);
   if (!S.active && saved && S.projects.some(p => p.id === saved)) S.active = saved;
   if (!S.projects.some(p => p.id === S.active)) S.active = S.projects[0]?.id ?? null;
-  if (S.active) localStorage.setItem('pbw-project', S.active);
-  else localStorage.removeItem('pbw-project');
+  if (S.active) localStorage.setItem(PROJ_KEY, S.active);
+  else localStorage.removeItem(PROJ_KEY);
   renderAll();
   if (withMemory) await loadMemory();
 }
@@ -453,7 +455,7 @@ $('#project-list').addEventListener('click', e => {
   const b = e.target.closest('.proj');
   if (!b) return;
   S.active = b.dataset.id;
-  localStorage.setItem('pbw-project', S.active);
+  localStorage.setItem(PROJ_KEY, S.active);
   renderAll();
   loadMemory();
 });
