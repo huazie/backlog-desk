@@ -266,12 +266,19 @@
   window.__mockApi = mockApi;
 
   // 顶栏：演示徽标 + 重置入口
+  // .demo-actions 作为 topbar 独立子项插在 brand 之后：PC 端随 flex 落在刷新按钮左侧；
+  // 手机端 margin-left auto 靠右与标题同行（重置按钮由 CSS 收成图标腾宽度），不再单独占一行
   function addBanner() {
-    const bar = document.querySelector('.top-actions');
+    const bar = document.querySelector('.topbar');
     if (!bar || document.getElementById('btn-demo-reset')) return;
-    bar.insertAdjacentHTML('afterbegin',
+    const actions = '<span class="demo-actions">' +
       '<span class="badge ro demo-badge" title="静态演示：数据为脱敏虚构示例，改动仅保存在本机浏览器，不影响任何真实项目">演示模式</span>' +
-      '<button id="btn-demo-reset" class="btn ghost" title="清空本机演示改动，恢复初始示例数据">重置数据</button>');
+      '<button id="btn-demo-reset" class="btn ghost" title="清空本机演示改动，恢复初始示例数据">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>' +
+      '<span>重置数据</span></button></span>';
+    const brand = bar.querySelector('.brand');
+    if (brand) brand.insertAdjacentHTML('afterend', actions);
+    else bar.insertAdjacentHTML('beforeend', actions);
     document.getElementById('btn-demo-reset').addEventListener('click', () => {
       if (!confirm('重置演示数据？\n将清除本机保存的演示改动，恢复到初始示例。')) return;
       localStorage.removeItem(STORE_KEY);

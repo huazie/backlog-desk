@@ -94,7 +94,12 @@ a { color: var(--accent); }
 .stat.pri-P1 b { color: var(--p1); }
 .stat.pri-P2 b { color: var(--p2); }
 .stat.pri-P3 b { color: var(--p3); }
-.top-actions { display: flex; gap: 8px; }
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* 演示徽标 + 重置入口（仅 demo 模式由 demo.js 注入）：topbar 独立子项，PC 端落在刷新按钮左侧 */
+.demo-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.demo-actions .btn { display: inline-flex; align-items: center; gap: 5px; }
+.demo-actions .btn svg { display: none; width: 14px; height: 14px; }
 
 .btn {
   padding: 5px 12px; border-radius: 7px;
@@ -342,7 +347,7 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
 .tip:hover .tip-i { color: var(--accent); opacity: 1; }
 .tip-box {
   display: none; position: absolute; top: calc(100% + 3px); right: -6px; z-index: 40;
-  width: 330px; padding: 8px 10px; border-radius: 7px;
+  width: min(330px, 78vw); padding: 8px 10px; border-radius: 7px;
   background: var(--surface); border: 1px solid var(--border-strong);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .14);
   color: var(--text-2); font-size: 11px; line-height: 1.65; font-weight: 400;
@@ -373,8 +378,13 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
 }
 @media (max-width: 760px) {
   .topbar { gap: 10px; padding: 10px 12px; }
+  /* 演示元素与标题同行靠右（标题行右侧留白利用），重置按钮收成图标腾宽度；
+     真实按钮组（刷新/项目配置/Agent 配置/跟踪/主题切）整体换行到第二行 */
+  .demo-actions { margin-left: auto; }
+  .demo-actions .btn svg { display: block; }
+  .demo-actions .btn span { display: none; }
   .brand .sub, .stats { display: none; }
-  .layout { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
   .rail { border-right: none; border-bottom: 1px solid var(--border); }
   #project-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
   .proj { margin: 0; }
@@ -383,4 +393,12 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
   .add-form input:nth-of-type(2) { grid-column: 1 / -1; }
   .add-form button { grid-column: 1 / -1; }
   .table-wrap { overflow-x: auto; }
+  /* 窄屏列宽收束：固定列收窄 + 标题/说明列 min 降低，min-width 780→640，横滚距离减 ~140px */
+  table.items { min-width: 640px; }
+  .c-id { width: 34px; }
+  .c-pri { width: 64px; }
+  .c-status { width: 104px; }
+  .c-title { min-width: 120px; }
+  .c-note { min-width: 140px; }
+  .c-date { width: 84px; }
 }
