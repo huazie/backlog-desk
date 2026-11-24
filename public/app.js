@@ -364,6 +364,15 @@ function openTrackForm() {
   });
 }
 
+// 项目卡「记忆根 memoryRoot」的 label 行：适配器带 memoryHint（trae/dsh 记忆目录在用户级路径，
+// 配 memoryRoot 需要该说明）时在行右侧渲染 ⓘ 悬浮提示，与 Agent 配置卡 skillDir 的 tip 同款；
+// 无 memoryHint 的适配器不渲染图标；随适配器切换整体重渲染
+function memRootLbl(agentKey) {
+  const hint = (S.config.agents[agentKey]?.memoryHint || '').trim();
+  const tip = hint ? `<span class="tip" data-mem-tip><svg class="tip-i" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><rect x="7.35" y="7.1" width="1.3" height="4.1" rx="0.65" fill="currentColor"/><circle cx="8" cy="4.9" r="0.95" fill="currentColor"/></svg><span class="tip-box">${esc(hint)}</span></span>` : '';
+  return `<span class="lbl-row" data-mem-lbl>记忆根 memoryRoot${tip}</span>`;
+}
+
 // 项目配置卡片：复用 agent-card 的卡片样式与收起/展开交互，每个项目独立编辑、独立保存
 function projectCard(p, isNew) {
   const d = p || { name: '', projectRoot: '', memoryRoot: '', agent: Object.keys(S.config.agents)[0] };
@@ -379,7 +388,7 @@ function projectCard(p, isNew) {
       <label>项目 ID<input data-f="id" value="${esc(p?.id || '')}" ${p ? 'readonly' : ''} placeholder="英文标识，如 flea-game"></label>
       <label>显示名称<input data-f="name" value="${esc(d.name)}"></label>
       <label>代码根 projectRoot<input data-f="projectRoot" value="${esc(d.projectRoot)}" placeholder="项目目录绝对路径或 ~/..."></label>
-      <label>记忆根 memoryRoot<input data-f="memoryRoot" value="${esc(d.memoryRoot)}" placeholder="可与代码根不同"></label>
+      <label>${memRootLbl(d.agent)}<input data-f="memoryRoot" value="${esc(d.memoryRoot)}" placeholder="可与代码根不同"></label>
       <label>Agent 适配器<select data-f="agent">${agents}</select></label>
     </div>
   </div>`;
