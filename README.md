@@ -45,6 +45,19 @@ bdesk skill                        # 按 agent（默认 workbuddy）安装协作
 
 > 新增 agent 支持：适配器由配置驱动（单一权威源）——在「Agent 配置」抽屉或 `config` 的 `agents` 里新增适配器并声明 `skillDir`（技能根目录名，如 `.claude`），即可 `bdesk skill --agent <名字>`（模板路径与记忆说明由 `skillDir` / `memoryHint` / `memoryDir` 占位符自动注入，通用正文零改动；某 agent 需要定制正文时，新建 `skill/<agent>/SKILL.md` 整份覆盖）。用户态配置的同名适配器逐字段覆盖内置定义。
 
+### 内置适配器
+
+| Agent | 项目级技能目录 | 默认记忆目录 |
+|---|---|---|
+| workbuddy | `.workbuddy/skills/` | `.workbuddy/memory/` |
+| trae | `.trae-cn/skills/`（国内版实测） | 用户级 `.trae-cn/memory/projects/<项目key>/`（项目 key 由 Trae 按项目路径生成；跨项目偏好在其同级 `user_profile.md`） |
+| dsh | `.dsh/skills/` | **留空 = 记忆目录即项目记忆根** |
+| claude | `.claude/skills/` | 用户级 `~/.claude/projects/<项目key>/memory/`（自动记忆，项目 key 由 git 仓库路径编码生成） |
+| codex | `.codex/skills/` | 用户级 `~/.codex/memories/`（Codex Memories 生成层） |
+
+> **dsh 记忆路径随记忆插件**，无固定值——建项目时把「记忆根 memoryRoot」指到所用插件的实际记忆目录（含项目外路径均可）：dsh-memory-palace 为项目内 `.deepseek-harness/`、dsh-persist 为 `~/.dsh-memory/projects/<key>/`、dsh-workspace-memories 默认 `~/.dsh/workspace-memory/<工作区>/`（可配置为项目内 `.dsh/memory/`）。`syncFile` 需与插件记忆文件名一致（如 dsh-persist 为 `memory.md`）。
+> 已安装的旧版 skill 副本升级模板后需 `bdesk skill --force`（用户级加 `--global`）刷新。
+
 ## 常用选项
 
 | 选项 | 说明 |
