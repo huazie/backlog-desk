@@ -213,6 +213,27 @@ async function mtimeOf(id) {
     p = run(['--uninstall']);
     check('TC-024 重复卸载提示未安装',
       p.status === 0 && /未安装/.test(p.stdout), (p.stdout || '').trim());
+
+    // TC-035 多 agent 适配器（#18）：四家 skill 安装落点、占位符清零、{{AGENT}} 注入；
+    // claude/codex/dsh 无固定项目内记忆路径（claude/codex 记忆在用户级 ~/.claude|~/.codex 下，#30/#31；
+    // dsh 随记忆插件），注入 memoryHint 说明文本而非路径
+    const multiAgents = [
+      ['claude', '.claude', '~/.claude/projects/'],
+      ['codex', '.codex', '~/.codex/memories/'],
+      ['trae', '.trae-cn', '.trae-cn/memory/projects'],
+      ['dsh', '.dsh', null]
+    ];
+    const multi = multiAgents.map(([a, dir, mem]) => {
+      const d = path.join(tmpSkills, 'multi-', a);
+      const p2 = spawnSync(process.execPath, [cli, 'skill', '--agent', a, '--dir', d], { encoding: 'utf8' });
+      const f = path.join(d, 'bdesk-collab', 'SKILL.md');
+      const t2 = fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : '';
+      const memOk = mem ? t2.includes(mem) : t2.includes('因插件而异');
+      return { a, ok: p2.status === 0 && !!t2 && !/\{\{[A-Z_]+\}\}/.test(t2) && t2.includes(`（${a}）`) && memOk,
+        err: (p2.stderr || '').trim() };
+    });
+    check('TC-035 多 agent skill 安装落点与占位符注入（claude/codex/trae/dsh）',
+      multi.every(m => m.ok), multi.filter(m => !m.ok).map(m => `${m.a}: ${m.err}`).join('；'));
   } finally {
     fs.rmSync(tmpSkills, { recursive: true, force: true });
   }

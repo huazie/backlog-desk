@@ -422,7 +422,7 @@ function agentCard(key, a, isNew) {
       <button class="op hard" data-del-agent="${esc(key)}" title="删除适配器">×</button></div>
     <div class="agent-body">
     ${field('label', a.label || '', '显示名称')}
-    ${field('memoryDir', a.memoryDir || '', '记忆目录 memoryDir')}
+    ${field('memoryDir', a.memoryDir || '', '记忆目录 memoryDir（留空 = 即项目记忆根）')}
     <label><span class="lbl-row">技能根目录 skillDir（留空 = 不支持 skill 安装）<span class="tip"><svg class="tip-i" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.3"/><rect x="7.35" y="7.1" width="1.3" height="4.1" rx="0.65" fill="currentColor"/><circle cx="8" cy="4.9" r="0.95" fill="currentColor"/></svg><span class="tip-box">该 Agent 技能根目录的目录名（单个目录名，如 <code>.claude</code> / <code>.trae-cn</code>）。配置后可用 <code>bdesk skill --agent &lt;名字&gt;</code> 安装「改造清单协作约定」skill：项目级装 <code>&lt;项目根&gt;/&lt;skillDir&gt;/skills/</code>，用户级（--global）装 <code>~&lt;/skillDir&gt;/skills/</code>。留空 = 不支持 skill 安装。</span></span></span><input data-f="skillDir" value="${esc(a.skillDir || '')}" placeholder="如 .claude，须为单个目录名"></label>
     ${field('backlogFile', a.backlogFile || '', '清单文件名 backlogFile')}
     ${field('contextFiles', (a.contextFiles || []).join(','), '长期笔记 contextFiles（逗号分隔）')}

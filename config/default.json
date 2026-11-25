@@ -9,34 +9,10 @@
       "label": "WorkBuddy",
       "skillDir": ".workbuddy",
       "memoryDir": ".workbuddy/memory",
+      "memoryHint": "位于项目内 .workbuddy/memory/（memoryDir 固定为该值），以项目配置的 memoryRoot 指向项目根为准（主题类子项目通常指向父仓）；改造清单与状态镜像均在此目录",
       "backlogFile": "改造清单.md",
       "contextFiles": [
         "MEMORY.md"
-      ],
-      "syncFile": "MEMORY.md",
-      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
-      "dailyFile": "{date}.md"
-    },
-    "claude": {
-      "label": "Claude Code",
-      "skillDir": ".claude",
-      "memoryDir": ".claude/memory",
-      "backlogFile": "改造清单.md",
-      "contextFiles": [
-        "MEMORY.md"
-      ],
-      "syncFile": "MEMORY.md",
-      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
-      "dailyFile": "{date}.md"
-    },
-    "codex": {
-      "label": "Codex CLI",
-      "skillDir": ".codex",
-      "memoryDir": ".codex/memory",
-      "backlogFile": "改造清单.md",
-      "contextFiles": [
-        "MEMORY.md",
-        "memory_summary.md"
       ],
       "syncFile": "MEMORY.md",
       "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
@@ -59,10 +35,41 @@
       "label": "DeepSeek Harness",
       "skillDir": ".dsh",
       "memoryDir": "",
-      "memoryHint": "取决于所用记忆插件（如 dsh-memory-palace 的 .deepseek-harness、dsh-persist 的 ~/.dsh-memory/projects/<key>、dsh-workspace-memories 的 ~/.dsh/workspace-memory/<工作区>），以项目配置的 memoryRoot 为准",
+      "memoryHint": "记忆目录因插件而异，以具体插件文档或设置页中的路径配置项为准。常见示例：dsh-memory-palace 用户级为 ~/.deepseek-harness/，项目级优先桥接 .workbuddy/memory/ 或 .codebuddy/memory/，原生回退为 <项目根>/.deepseek-harness/；dsh-persist 根目录为 ~/.dsh-memory/，项目记忆在 projects/<key>/ 下；dsh-workspace-memories 默认为 ~/.dsh/workspace-memory/<工作区>/，可切换为项目内存储；dsh-plugin-memory 通过 memoryDir 配置，默认 ~/.memory。记忆文件名也因插件而异：dsh-memory-palace 用 MEMORY.md 加日期日志；dsh-persist 用 USER.md / MEMORY.md / vault.md 等分层文件；dsh-workspace-memories 的全局文件为 preferences.md，工作区文件由用户或 agent 命名；dsh-plugin-memory 以 SOUL.md 和 MEMORY.md 为核心。镜像区块统一写入 MEMORY.md（最通用落点），跟踪视图按 contextFiles 展示实际存在的文件",
+      "backlogFile": "改造清单.md",
+      "contextFiles": [
+        "MEMORY.md",
+        "USER.md",
+        "SOUL.md",
+        "vault.md",
+        "preferences.md"
+      ],
+      "syncFile": "MEMORY.md",
+      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
+      "dailyFile": "{date}.md"
+    },
+    "claude": {
+      "label": "Claude Code",
+      "skillDir": ".claude",
+      "memoryDir": "",
+      "memoryHint": "位于用户级 ~/.claude/projects/<project>/memory/（Claude Code 自动记忆 Auto Memory，<project> 由 git 仓库路径编码生成，同仓库 worktree 共享，可用 settings.json autoMemoryDirectory 自定义），memoryRoot 直指该目录；MEMORY.md=记忆索引（每条记忆一行，会话启动加载，前 200 行/25KB 上限），主题文件按 <type>_<topic>.md 命名按需读取（user/feedback/project/reference 四类，不按日期）；CLAUDE.md（项目 ./CLAUDE.md 或 ./.claude/CLAUDE.md、用户级 ~/.claude/CLAUDE.md）与 rules 目录（.claude/rules/*.md）是静态指令层，不作为记忆文件",
       "backlogFile": "改造清单.md",
       "contextFiles": [
         "MEMORY.md"
+      ],
+      "syncFile": "MEMORY.md",
+      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
+      "dailyFile": "{date}.md"
+    },
+    "codex": {
+      "label": "Codex CLI",
+      "skillDir": ".codex",
+      "memoryDir": "",
+      "memoryHint": "位于用户级 ~/.codex/memories/（Codex Memories 生成层，config.toml [memories] 配置开关），memoryRoot 直指该目录；MEMORY.md=长篇合并记忆（细节 grep）、memory_summary.md=会话启动整体读取的合并视图、raw_memories.md 与 rollout_summaries/<slug>.md 为内部状态；AGENTS.md（全局 ~/.codex/AGENTS.md + 项目逐级，32KiB 截断）是静态指令层，不作为记忆文件；Memories 功能区域受限（EEA/UK/瑞士未开放，仅 AGENTS.md 层）",
+      "backlogFile": "改造清单.md",
+      "contextFiles": [
+        "MEMORY.md",
+        "memory_summary.md"
       ],
       "syncFile": "MEMORY.md",
       "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
