@@ -16,6 +16,57 @@
       "syncFile": "MEMORY.md",
       "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
       "dailyFile": "{date}.md"
+    },
+    "claude": {
+      "label": "Claude Code",
+      "skillDir": ".claude",
+      "memoryDir": ".claude/memory",
+      "backlogFile": "改造清单.md",
+      "contextFiles": [
+        "MEMORY.md"
+      ],
+      "syncFile": "MEMORY.md",
+      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
+      "dailyFile": "{date}.md"
+    },
+    "codex": {
+      "label": "Codex CLI",
+      "skillDir": ".codex",
+      "memoryDir": ".codex/memory",
+      "backlogFile": "改造清单.md",
+      "contextFiles": [
+        "MEMORY.md",
+        "memory_summary.md"
+      ],
+      "syncFile": "MEMORY.md",
+      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
+      "dailyFile": "{date}.md"
+    },
+    "trae": {
+      "label": "Trae",
+      "skillDir": ".trae-cn",
+      "memoryDir": "",
+      "memoryHint": "位于用户级 .trae-cn/memory/projects/<项目key>/（国内版实测；项目 key 由 Trae 按项目路径生成，含路径编码与哈希），以项目配置的 memoryRoot 指向所用项目 key 目录为准；跨项目用户偏好在其同级的 user_profile.md",
+      "backlogFile": "改造清单.md",
+      "contextFiles": [
+        "project_memory.md"
+      ],
+      "syncFile": "project_memory.md",
+      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
+      "dailyFile": "{date}.md"
+    },
+    "dsh": {
+      "label": "DeepSeek Harness",
+      "skillDir": ".dsh",
+      "memoryDir": "",
+      "memoryHint": "取决于所用记忆插件（如 dsh-memory-palace 的 .deepseek-harness、dsh-persist 的 ~/.dsh-memory/projects/<key>、dsh-workspace-memories 的 ~/.dsh/workspace-memory/<工作区>），以项目配置的 memoryRoot 为准",
+      "backlogFile": "改造清单.md",
+      "contextFiles": [
+        "MEMORY.md"
+      ],
+      "syncFile": "MEMORY.md",
+      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
+      "dailyFile": "{date}.md"
     }
   },
   "projects": []

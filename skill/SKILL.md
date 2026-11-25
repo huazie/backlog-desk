@@ -1,20 +1,20 @@
 ---
 name: bdesk-collab
 description: |
-  bdesk（改造清单台）协作约定。当当前项目的 Agent 记忆目录（默认 `{{MEMORY_DIR}}/`）存在「改造清单.md」或「改造清单协作约定.md」，或用户提到「改造清单 / 改造项 / 任务卡 / backlog / bdesk / 协作约定」时使用。
+  bdesk（改造清单台）协作约定。当当前项目的 Agent 记忆目录（默认 {{MEMORY_DIR}}）存在「改造清单.md」或「改造清单协作约定.md」，或用户提到「改造清单 / 改造项 / 任务卡 / backlog / bdesk / 协作约定」时使用。
   规定唯一权威源、Agent 单写点、表格字段枚举、增删改规则、工作台自动行为与任务卡派发闭环，确保 Agent 与改造清单台双向协作不出错。
 ---
 
 # bdesk 改造清单协作约定
 
-> 适用对象：读取项目记忆目录（默认 `{{MEMORY_DIR}}/`）的所有 Agent（{{AGENT}}）。
+> 适用对象：读取项目记忆目录（默认 {{MEMORY_DIR}}）的所有 Agent（{{AGENT}}）。
 > 本 skill 由 `bdesk skill` 安装；若项目记忆目录另有《改造清单协作约定.md》，**以该文件为准**（它由工作台维护、只读）。
 > 执行要求速记：**单写点、不删行、不重排 ID、不手写镜像、不自动提交、提交推送必同步清单**。
 
 ## 0. 先定位本项目的清单
 
 1. 读配置找：`~/.backlog-desk/config.json`（或仓库内 `config/workbench.json`）的 `projects[]`，按项目 id 取 `memoryRoot` 与对应 Agent 适配器的 `backlogFile`。
-2. 或直接探测：`<项目根>/{{MEMORY_DIR}}/改造清单.md`。
+2. 或直接探测：`{{MEMORY_DIR}}/改造清单.md`（相对项目根）。
 3. 都没有：提示用户运行 `bdesk start`，在页面「添加项目」登记；**不要自行发明路径**。
 
 ## 1. 唯一权威源
