@@ -82,8 +82,10 @@ a { color: var(--accent); }
 .brand { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
 .logo { width: 18px; height: 18px; color: var(--accent); flex: none; align-self: center; }
 .brand h1 { font-size: 15px; font-weight: 500; margin: 0; }
-.brand .sub { color: var(--text-3); font-size: 12px; }
-.stats { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+.brand .sub { color: var(--text-3); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* 统计徽标组：flex-basis 380px（略大于徽标横排总宽 ~359）——空间不足时整体换行，
+   避免被 brand/按钮组挤瘪成一行一枚的纵向柱（主页与 demo 页统一生效） */
+.stats { display: flex; gap: 8px; flex: 1 1 380px; flex-wrap: wrap; }
 .stat {
   padding: 2px 10px; border-radius: 999px;
   background: var(--surface-2); border: 1px solid var(--border);
@@ -94,7 +96,28 @@ a { color: var(--accent); }
 .stat.pri-P1 b { color: var(--p1); }
 .stat.pri-P2 b { color: var(--p2); }
 .stat.pri-P3 b { color: var(--p3); }
-.top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+
+/* 中宽自适应带（1000~1399）：间距与徽标内边距收窄、按钮可 ellipsis 收缩；
+   单行/退行决策由 app.js 的 syncTopbar() 精确计算（flex 断行决策在收缩之前，
+   纯 CSS 无法"塞不下才让徽标退行"且保持徽标在按钮左侧的视觉序）：
+   副标题按需 ellipsis 截断（下限 120px）尽量单行，塞不下时加 .stats-drop
+   让徽标组整体退第二行居中（第一行 brand+演示/重置+按钮贴右）；
+   ≥1400 原样单行；765~999 自然贪装两行（徽标+按钮共享第二行）；≤760 #27 手机版式 */
+@media (min-width: 1000px) and (max-width: 1399px) {
+  .topbar { gap: 12px; }
+  .top-actions { gap: 6px; }
+  .top-actions .btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding-left: 8px; padding-right: 8px; }
+  .stats { flex: 0 0 auto; gap: 6px; }
+  .stat { padding-left: 7px; padding-right: 7px; }
+}
+/* 徽标组退行态（app.js syncTopbar() 判定塞不下单行时挂上）：整体退第二行居中横排 */
+.topbar.stats-drop .stats { order: 9; flex-basis: 100%; justify-content: center; }
+/* 按钮组退行态（app.js syncTopbar() 判定按钮换到第二行时挂上）：
+   按钮组拉伸铺满第二行剩余宽度、按钮均分拉伸自适应整行（图标按钮保持固定宽），消除贴右留白 */
+.topbar.actions-wrap .top-actions { flex: 1 1 auto; margin-left: 0; }
+.topbar.actions-wrap .top-actions .btn { flex: 1 1 auto; }
+.topbar.actions-wrap .top-actions .btn.btn-icon { flex: 0 0 auto; }
 
 /* 演示徽标 + 重置入口（仅 demo 模式由 demo.js 注入）：topbar 独立子项，PC 端落在刷新按钮左侧 */
 .demo-actions { display: flex; align-items: center; gap: 8px; flex: none; }
@@ -381,6 +404,7 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
   /* 演示元素与标题同行靠右（标题行右侧留白利用），重置按钮收成图标腾宽度；
      真实按钮组（刷新/项目配置/Agent 配置/跟踪/主题切）整体换行到第二行 */
   .demo-actions { margin-left: auto; }
+  .top-actions { margin-left: 0; }
   .demo-actions .btn svg { display: block; }
   .demo-actions .btn span { display: none; }
   .brand .sub, .stats { display: none; }

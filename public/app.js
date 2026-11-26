@@ -661,4 +661,58 @@ $('#drawer').addEventListener('click', async e => {
 });
 
 document.documentElement.dataset.theme = localStorage.getItem('pbw-theme') || 'light';
-loadState().then(() => { connectEvents(); startPulse(); }).catch(e => toast('加载失败：' + e.message, 'err'));
+
+// 顶栏自适应（#34）：JS 精确分配空间。flex 换行决策在收缩之前（收缩救不了断行），
+// 且 order 会同时改变视觉序（徽标会被排到按钮右侧），故用计算代替 CSS 贪装：
+// 优先单行——副标题按需 ellipsis 截断（下限 SUB_MIN，不硬隐藏）；单行实在塞不下时
+// 才给 topbar 挂 .stats-drop 让徽标组整体退第二行居中（第一行 brand+演示/重置+按钮贴右）。
+// 徽标视觉序始终保持在按钮左侧（不改动 DOM/order 的默认形态）。
+(function () {
+  const topbar = document.querySelector('.topbar');
+  if (!topbar) return;
+  const sub = topbar.querySelector('.brand .sub');
+  const stats = topbar.querySelector('.stats');
+  const brand = topbar.querySelector('.brand');
+  const actions = topbar.querySelector('.top-actions');
+  const SUB_MIN = 120; // 副标题可截断下限（px）：低于此不如让徽标退行
+  function syncTopbar() {
+    if (!sub || !stats) return;
+    sub.style.maxWidth = '';
+    topbar.classList.remove('stats-drop');
+    topbar.classList.remove('actions-wrap');
+    if (getComputedStyle(sub).display === 'none') return; // ≤760 手机版式不参与
+    const cs = getComputedStyle(topbar);
+    const avail = topbar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const gap = parseFloat(cs.columnGap) || 0;
+    const kids = [...topbar.children].filter(el => getComputedStyle(el).display !== 'none');
+    const widths = kids.map(el => el.getBoundingClientRect().width);
+    const subW = sub.getBoundingClientRect().width;
+    const sumNoSub = widths.reduce((s, w) => s + w, 0) - subW;
+    const gaps = gap * (kids.length - 1);
+    if (sumNoSub + subW + gaps <= avail) return;            // 全量单行，副标题全显
+    const slack = avail - sumNoSub - gaps;
+    if (slack >= SUB_MIN) {                                  // 单行但需截断副标题
+      sub.style.maxWidth = slack + 'px';
+      return;
+    }
+    // 单行塞不下：徽标组退二行，但需保证第一行（其余子项、副标题全显）自身装得下，否则维持自然换行
+    const si = kids.indexOf(stats);
+    if (si < 0) return;
+    const firstRow = widths.reduce((s, w, i) => s + (i === si ? 0 : w), 0) + gap * (kids.length - 2);
+    if (firstRow <= avail) topbar.classList.add('stats-drop');
+    // 按钮组换到第二行时挂 .actions-wrap：按钮组拉伸铺满第二行剩余宽度（垂直中心差判同行，
+    // align-items:center 下同行元素 top 不同不能直接比）
+    if (actions && brand) {
+      const a = actions.getBoundingClientRect(), b = brand.getBoundingClientRect();
+      const wrapped = Math.abs((a.top + a.height / 2) - (b.top + b.height / 2)) > 16;
+      topbar.classList.toggle('actions-wrap', wrapped);
+    }
+  }
+  window.__syncTopbar = syncTopbar; // 徽标数据渲染后需重算（首测时 stats 为空宽度失真）
+  syncTopbar();
+  window.addEventListener('resize', syncTopbar);
+  window.addEventListener('load', syncTopbar); // 后到元素兜底
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncTopbar);
+})();
+
+loadState().then(() => { connectEvents(); startPulse(); window.__syncTopbar && window.__syncTopbar(); }).catch(e => toast('加载失败：' + e.message, 'err'));
