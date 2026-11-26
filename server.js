@@ -684,17 +684,21 @@ function checkDir(dir) {
 function projectState(cfg, p) {
   const memDir = memoryDirOf(cfg, p);
   const file = path.join(memDir, agentOf(cfg, p).backlogFile);
+  // 视图层路径统一为原生绝对路径（与 backlogPath 的 path.join 形态一致，展示与磁盘实物一致）；
+  // 配置串中的 ~/ 占位符仅在此展开展示，编辑表单走 config 原串不受影响
+  const projRootAbs = path.resolve(expandHome(p.projectRoot));
+  const memRootAbs = path.resolve(expandHome(p.memoryRoot));
   const state = {
     id: p.id,
     name: p.name,
-    projectRoot: p.projectRoot,
-    memoryRoot: p.memoryRoot,
+    projectRoot: projRootAbs,
+    memoryRoot: memRootAbs,
     agent: p.agent,
     agentLabel: agentOf(cfg, p).label || p.agent,
     backlogPath: file,
     health: {
-      projectRoot: fs.existsSync(expandHome(p.projectRoot)),
-      memoryRoot: fs.existsSync(expandHome(p.memoryRoot)),
+      projectRoot: fs.existsSync(projRootAbs),
+      memoryRoot: fs.existsSync(memRootAbs),
       memoryDir: fs.existsSync(memDir),
       backlogFile: fs.existsSync(file)
     },
