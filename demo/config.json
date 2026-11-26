@@ -8,10 +8,22 @@
     "workbuddy": {
       "label": "WorkBuddy",
       "memoryDir": ".workbuddy/memory",
+      "memoryHint": "位于项目内 .workbuddy/memory/（memoryDir 固定为该值），以项目配置的 memoryRoot 指向项目根为准（主题类子项目通常指向父仓）；改造清单与状态镜像均在此目录",
       "skillDir": ".workbuddy",
       "backlogFile": "改造清单.md",
       "contextFiles": ["MEMORY.md"],
       "syncFile": "MEMORY.md",
+      "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
+      "dailyFile": "{date}.md"
+    },
+    "trae": {
+      "label": "Trae",
+      "memoryDir": "",
+      "memoryHint": "位于用户级 .trae-cn/memory/projects/<项目key>/（国内版实测；项目 key 由 Trae 按项目路径生成，含路径编码与哈希），以项目配置的 memoryRoot 指向所用项目 key 目录为准；跨项目用户偏好在其同级的 user_profile.md",
+      "skillDir": ".trae-cn",
+      "backlogFile": "改造清单.md",
+      "contextFiles": ["project_memory.md"],
+      "syncFile": "project_memory.md",
       "dailyPattern": "^\\d{4}-\\d{2}-\\d{2}\\.md$",
       "dailyFile": "{date}.md"
     }
@@ -30,6 +42,13 @@
       "projectRoot": "{{DEMO}}/sample-cli",
       "memoryRoot": "{{DEMO}}/sample-cli",
       "agent": "workbuddy"
+    },
+    {
+      "id": "sample-trae",
+      "name": "sample-trae 移动端示例",
+      "projectRoot": "{{DEMO}}/sample-trae",
+      "memoryRoot": "~/.trae-cn/memory/projects/-demo-projects-sample-trae--p2-026388253ca653c8816c",
+      "agent": "trae"
     }
   ]
 }

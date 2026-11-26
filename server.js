@@ -133,7 +133,8 @@ function validateConfig(cfg) {
     throw new Error('至少需要一个 Agent 适配器');
   }
   for (const [key, a] of Object.entries(cfg.agents)) {
-    if (!a.memoryDir || !a.backlogFile) throw new Error(`Agent ${key} 缺少 memoryDir 或 backlogFile`);
+    // memoryDir 允许空串 = 记忆目录即项目 memoryRoot（dsh 等记忆路径随记忆插件的适配器由项目配置指定）；null/undefined 仍拒绝
+    if (a.memoryDir == null || !a.backlogFile) throw new Error(`Agent ${key} 缺少 memoryDir 或 backlogFile`);
     // skillDir 非空时必须是单个目录名（相对用户主目录或项目根的技能根目录，如 .claude）；留空 = 不支持 skill 安装
     if (a.skillDir != null && String(a.skillDir).trim()) {
       if (isAbsoluteAny(String(a.skillDir)) || /[\\/]/.test(String(a.skillDir)) || String(a.skillDir).split(/[\\/]/).includes('..')) {
