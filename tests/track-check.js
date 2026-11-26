@@ -15,8 +15,18 @@ const PORT = Number(process.env.PORT) || 8787;
 const TEST_ID = 'pbw-track-test';
 const TMP = path.join(os.tmpdir(), `pbw-track-${process.pid}`);
 const MEM = path.join(TMP, '.workbuddy', 'memory');
-const DATA = process.env.BACKLOG_HOME ? path.resolve(process.env.BACKLOG_HOME) : ROOT;
-const HISTORY = path.join(DATA, 'history.jsonl');
+// 运行态目录动态锚定：与 smoke.js / sync-check.js 同款三级取值——BACKLOG_HOME 优先，
+// 其次 /api/state 暴露的 dataDir（旧版服务无此字段时按默认目录 ~/.backlog-desk 兜底），
+// 都不存在时才回落仓库根。服务可能以 --data-dir 或默认目录运行，测试不能假设仓库根。
+let DATA = process.env.BACKLOG_HOME ? path.resolve(process.env.BACKLOG_HOME) : null;
+let HISTORY = null;
+function resolveDataDir(fromState) {
+  if (!DATA) {
+    const cand = fromState || path.join(os.homedir(), '.backlog-desk');
+    DATA = fs.existsSync(cand) ? cand : ROOT;
+  }
+  HISTORY = path.join(DATA, 'history.jsonl');
+}
 const d = new Date();
 const pad = n => String(n).padStart(2, '0');
 const DATE = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -106,6 +116,18 @@ function openSSE() {
 }
 
 const state = () => req('GET', '/api/state');
+// 任务卡断言一律按测试项目过滤：/api/state 的 tasks 是全局 pending 列表，
+// 真实服务上其它项目（含真实项目与派发回归残留）的任务卡不得影响计数
+const projTasks = st => st.tasks.filter(t => t.project === TEST_ID);
+// 清理本测试项目残留的 pending 任务卡：上次运行中断或断言失败都可能遗留，
+// 计数断言（length === 1 等）只有在「只有本次生成的卡」时才可靠
+async function closeOwnCards() {
+  const st = (await state()).data;
+  for (const t of st.tasks.filter(x => x.project === TEST_ID)) {
+    try { await req('POST', `/api/tasks/${encodeURIComponent(t.id)}`, { status: 'done' }); }
+    catch (_) { /* 单张失败不阻塞，后续断言会暴露 */ }
+  }
+}
 const cfgNow = async () => (await state()).data.config;
 async function mtimeOf(id) {
   const s = await state();
@@ -143,7 +165,10 @@ function cleanupDir(dir) {
 }
 
 (async () => {
-  const originalConfig = (await state()).data.config;
+  const st0 = (await state()).data;
+  const originalConfig = st0.config;
+  resolveDataDir(st0.dataDir); // 先锚定运行态目录再备份 history，恢复路径才与真实写入路径一致
+  await closeOwnCards(); // 开跑前清掉上次运行可能遗留的本项目任务卡
   const originalHistory = fs.existsSync(HISTORY) ? read(HISTORY) : null;
   const ctxPath = path.join(MEM, 'MEMORY.md');
   const logPath = path.join(MEM, `${DATE}.md`);
@@ -174,8 +199,8 @@ function cleanupDir(dir) {
     await wait(SETTLE_WAIT);
     ok('工作台自写未误判为外部改动（自写抑制）', eventsOf('agent').length === agentBefore);
     st = (await state()).data;
-    ok('新增生成 1 张 pending 任务卡', st.tasks.length === 1 && st.tasks[0].status === 'pending');
-    const task = st.tasks[0].task;
+    ok('新增生成 1 张 pending 任务卡', projTasks(st).length === 1 && projTasks(st)[0].status === 'pending');
+    const task = projTasks(st)[0].task;
     ok('任务卡含条目与项目路径', task && task.itemId === '2' && task.title === '工作台新增项 B' &&
       path.resolve(task.memoryDir) === path.resolve(MEM));
     ok('任务卡指令写明唯一权威源与禁止项',
@@ -190,19 +215,20 @@ function cleanupDir(dir) {
     ok('长期笔记历史前缀逐字节不变', ctx1.startsWith(CONTEXT.trimEnd()));
 
     // 4. 改优先级不生成任务卡；转 doing 才生成
-    const tasksBefore = st.tasks.length;
+    const tasksBefore = projTasks(st).length;
     r = await mutate('PATCH', `/api/items/${TEST_ID}/2`, { priority: 'P0' });
     ok('改优先级写回成功', r.status === 200);
     st = (await state()).data;
-    ok('改优先级不生成新任务卡', st.tasks.length === tasksBefore);
+    ok('改优先级不生成新任务卡', projTasks(st).length === tasksBefore);
     r = await mutate('PATCH', `/api/items/${TEST_ID}/2`, { status: 'doing' });
     ok('状态转为进行中写回成功', r.status === 200);
     st = (await state()).data;
-    ok('转 doing 生成第 2 张任务卡', st.tasks.length === tasksBefore + 1);
+    ok('转 doing 生成第 2 张任务卡', projTasks(st).length === tasksBefore + 1);
 
     // 5. 任务卡可关闭
-    r = await req('POST', `/api/tasks/${encodeURIComponent(st.tasks[0].id)}`, { status: 'done' });
-    ok('任务卡可标记完成', r.status === 200 && r.data.tasks.length === st.tasks.length - 1);
+    const own = projTasks(st);
+    r = await req('POST', `/api/tasks/${encodeURIComponent(own[0].id)}`, { status: 'done' });
+    ok('任务卡可标记完成', r.status === 200 && projTasks(r.data).length === own.length - 1);
 
     // 6. SSE 连接
     sse = await openSSE();
@@ -266,10 +292,10 @@ function cleanupDir(dir) {
     // 11. 关闭任务卡生成
     await putConfig(c => { c.autoWatch = true; c.autoTask = false; });
     await wait(200);
-    const tk = (await state()).data.tasks.length;
+    const tk = projTasks((await state()).data).length;
     r = await mutate('POST', `/api/items/${TEST_ID}`, { title: '关闭任务卡后的新增项' });
     ok('关闭 autoTask 后新增仍写回成功', r.status === 200);
-    ok('关闭 autoTask 后不生成任务卡', (await state()).data.tasks.length === tk);
+    ok('关闭 autoTask 后不生成任务卡', projTasks((await state()).data).length === tk);
 
     // 12. 关闭记忆同步时，外部改动也不写真实记忆文件
     await putConfig(c => { c.autoTask = true; c.syncToMemory = false; });
@@ -290,6 +316,9 @@ function cleanupDir(dir) {
     } else {
       fs.writeFileSync(HISTORY, originalHistory, 'utf8');
     }
+    // 任务卡是 history 里的 pending 事件——恢复 history 会复活本次运行生成的卡，
+    // 因此收尾清卡必须在 history 恢复之后（追加的关闭事件落在恢复基线之后，才不会被抹掉）
+    await closeOwnCards();
     cleanupDir(TMP);
     cleanupDir(path.join(DATA, 'backups', TEST_ID));
     console.log('清理：配置已恢复、history 已还原、临时目录与测试备份已删除');

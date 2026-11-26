@@ -9,9 +9,17 @@ const { spawnSync } = require('child_process');
 const PORT = Number(process.env.PORT) || 8787;
 const BASE = `http://127.0.0.1:${PORT}`;
 const ROOT = path.resolve(__dirname, '..');
-const DATA = process.env.BACKLOG_HOME ? path.resolve(process.env.BACKLOG_HOME) : ROOT;
-const BAK_DIR = path.join(DATA, 'backups', 'hexo-theme-diversity');
-const HISTORY = path.join(DATA, 'history.jsonl');
+let DATA = process.env.BACKLOG_HOME ? path.resolve(process.env.BACKLOG_HOME) : null;
+let BAK_DIR = null;
+let HISTORY = null;
+// 真实服务的 dataDir 未必是仓库根（默认落用户目录 ~/.backlog-desk）：优先 BACKLOG_HOME，
+// 否则从 /api/state 动态获取（服务端已暴露 dataDir 字段），避免验收读到错位的历史与备份
+const resolveDataDir = dir => {
+  if (!dir) return;
+  DATA = dir;
+  BAK_DIR = path.join(dir, 'backups', 'hexo-theme-diversity');
+  HISTORY = path.join(dir, 'history.jsonl');
+};
 
 const results = [];
 let originalConfig = null;
@@ -39,7 +47,7 @@ function check(name, cond, detail = '') {
 }
 
 function restoreHistory() {
-  if (!historyCaptured) return; // 未取到快照时不能删真实 history
+  if (!historyCaptured || !HISTORY) return; // 未取到快照时不能删真实 history
   if (originalHistory === null) {
     if (fs.existsSync(HISTORY)) fs.unlinkSync(HISTORY);
   } else {
@@ -61,7 +69,7 @@ function restoreBacklog() {
 }
 
 function cleanupBackups() {
-  if (!backupsCaptured || !fs.existsSync(BAK_DIR)) return; // 未取到基线时不能删真实备份
+  if (!backupsCaptured || !BAK_DIR || !fs.existsSync(BAK_DIR)) return; // 未取到基线时不能删真实备份
   try {
     for (const n of fs.readdirSync(BAK_DIR)) {
       if (!bakBefore.includes(n)) fs.unlinkSync(path.join(BAK_DIR, n));
@@ -90,10 +98,11 @@ async function mtimeOf(id) {
   // 回归期间临时关闭记忆同步与任务卡生成，避免验收数据写入真实 MEMORY.md / 日志 / history。
   const st0 = (await req('/api/state')).data;
   originalConfig = st0.config;
+  resolveDataDir(st0.dataDir || path.join(os.homedir(), '.backlog-desk')); // 锚定服务端运行态目录（旧版服务未暴露 dataDir 时按默认目录兜底）
   const agentDir = originalConfig.agents.workbuddy.memoryDir;
   hexoMem = path.join(originalConfig.projects.find(p => p.id === 'hexo-theme-diversity').memoryRoot, agentDir);
   fleaMem = path.join(originalConfig.projects.find(p => p.id === 'flea-framework').memoryRoot, agentDir);
-  originalHistory = fs.existsSync(HISTORY) ? fs.readFileSync(HISTORY, 'utf8') : null;
+  originalHistory = HISTORY && fs.existsSync(HISTORY) ? fs.readFileSync(HISTORY, 'utf8') : null;
   historyCaptured = true;
   const quiet = JSON.parse(JSON.stringify(originalConfig));
   quiet.syncToMemory = false;
@@ -115,9 +124,12 @@ async function mtimeOf(id) {
   let r = await req('/api/state');
   const hexo = r.data.projects.find(p => p.id === 'hexo-theme-diversity');
   const flea = r.data.projects.find(p => p.id === 'flea-framework');
+  // 条数动态基线：真实清单随改造推进不断增长，硬编码条数必然漂移；增删用相对断言（TC-015 逐字节还原兜底）
+  const baselineHexo = hexo.items.length;
+  const baselineFlea = flea.items.length;
   check('TC-001 状态接口与两项目清单解析',
-    r.status === 200 && hexo.items.length === 11 && flea.items.length === 21,
-    `hexo ${hexo.items.length} 条 / flea ${flea.items.length} 条`);
+    r.status === 200 && baselineHexo > 0 && baselineFlea > 0,
+    `hexo ${baselineHexo} 条 / flea ${baselineFlea} 条（动态基线）`);
   check('TC-002 代码根与记忆根分离生效',
     hexo.backlogPath.replace(/\\/g, '/').includes('.workbuddy') && !hexo.backlogPath.replace(/\\/g, '/').includes('themes/diversity'),
     hexo.backlogPath);
@@ -139,7 +151,7 @@ async function mtimeOf(id) {
   r = await req('/api/items/hexo-theme-diversity', 'POST',
     { title: '【自动化验收】临时条目', priority: 'P1', note: 'smoke test', expectedMtime: mt });
   const newId = r.data.items?.at(-1)?.id;
-  check('TC-007 新增改造项', r.status === 200 && r.data.items.length === 12, '新 id=' + newId);
+  check('TC-007 新增改造项', r.status === 200 && r.data.items.length === baselineHexo + 1, '新 id=' + newId);
 
   mt = await mtimeOf('hexo-theme-diversity');
   r = await req(`/api/items/hexo-theme-diversity/${newId}`, 'PATCH',
@@ -154,7 +166,8 @@ async function mtimeOf(id) {
   check('TC-010 标记区块外的手写备注保留',
     disk.includes('## 抽取说明（工作台不改动此区块）'));
   check('TC-011 写前备份在工作台目录、不污染记忆目录',
-    fs.existsSync(BAK_DIR) && fs.readdirSync(BAK_DIR).length > bakBefore.length &&
+    fs.existsSync(BAK_DIR) &&
+    fs.readdirSync(BAK_DIR).some(n => !bakBefore.includes(n)) && // 备份滚动上限 30：满员时新备份会滚删最旧文件、总数不增，故以「出现本次新增备份」为准
     !fs.existsSync(backlogFile + '.bak'));
 
   r = await req(`/api/items/hexo-theme-diversity/${newId}`, 'PATCH',
@@ -169,7 +182,7 @@ async function mtimeOf(id) {
 
   mt = await mtimeOf('hexo-theme-diversity');
   r = await req(`/api/items/hexo-theme-diversity/${newId}`, 'DELETE', { hard: true, expectedMtime: mt });
-  check('TC-014 彻底删除后条数还原', r.status === 200 && r.data.items.length === 11);
+  check('TC-014 彻底删除后条数还原', r.status === 200 && r.data.items.length === baselineHexo);
 
   const after = fs.readFileSync(backlogFile, 'utf8');
   check('TC-015 清单文件逐字节无损还原', after === before, `${Buffer.byteLength(after)} bytes`);

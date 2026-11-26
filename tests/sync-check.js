@@ -17,8 +17,18 @@ const pad = n => String(n).padStart(2, '0');
 const DATE = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const TMP = path.join(os.tmpdir(), `pbw-sync-${process.pid}`);
 const MEM = path.join(TMP, '.workbuddy', 'memory');
-const DATA = process.env.BACKLOG_HOME ? path.resolve(process.env.BACKLOG_HOME) : ROOT;
-const HISTORY = path.join(DATA, 'history.jsonl');
+// 运行态目录动态锚定：与 smoke.js 同款三级取值——BACKLOG_HOME 优先，
+// 其次 /api/state 暴露的 dataDir（旧版服务无此字段时按默认目录 ~/.backlog-desk 兜底），
+// 都不存在时才回落仓库根。服务可能以 --data-dir 或默认目录运行，测试不能假设仓库根。
+let DATA = process.env.BACKLOG_HOME ? path.resolve(process.env.BACKLOG_HOME) : null;
+let HISTORY = null;
+function resolveDataDir(fromState) {
+  if (!DATA) {
+    const cand = fromState || path.join(os.homedir(), '.backlog-desk');
+    DATA = fs.existsSync(cand) ? cand : ROOT;
+  }
+  HISTORY = path.join(DATA, 'history.jsonl');
+}
 
 const CONTEXT = `# 项目长期笔记（测试）
 
@@ -93,8 +103,21 @@ function cleanupDir(dir) {
   fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }
 
+// 清理本测试项目残留的 pending 任务卡（autoTask 开启时新增条目会生成卡片，
+// 中断或失败的运行都会遗留）；history 恢复基线之后调用，关闭事件才不会被抹掉
+async function closeOwnCards() {
+  const st = (await state()).data;
+  for (const t of st.tasks.filter(x => x.project === TEST_ID || x.project === TEST_ID2)) {
+    try { await req('POST', `/api/tasks/${encodeURIComponent(t.id)}`, { status: 'done' }); }
+    catch (_) { /* 单张失败不阻塞 */ }
+  }
+}
+
 (async () => {
-  const originalConfig = (await state()).data.config;
+  const st0 = (await state()).data;
+  const originalConfig = st0.config;
+  resolveDataDir(st0.dataDir); // 先锚定运行态目录再备份 history，恢复路径才与真实写入路径一致
+  await closeOwnCards(); // 开跑前清掉上次运行可能遗留的本项目任务卡
   const originalHistory = fs.existsSync(HISTORY) ? read(HISTORY) : null;
   fs.mkdirSync(MEM, { recursive: true });
   fs.writeFileSync(path.join(MEM, 'MEMORY.md'), CONTEXT, 'utf8');
@@ -213,6 +236,8 @@ function cleanupDir(dir) {
     } else {
       fs.writeFileSync(HISTORY, originalHistory, 'utf8');
     }
+    // 任务卡是 history 里的 pending 事件——恢复 history 会复活本次生成的卡，收尾清卡必须在恢复之后
+    await closeOwnCards();
     cleanupDir(TMP);
     cleanupDir(path.join(DATA, 'backups', TEST_ID));
     cleanupDir(path.join(DATA, 'backups', TEST_ID2));

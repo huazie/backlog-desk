@@ -808,6 +808,7 @@ const server = http.createServer(async (req, res) => {
     if (seg[1] === 'state' && req.method === 'GET') {
       return json(res, 200, {
         ok: true,
+        dataDir: ctx.dataDir, // 运行态数据目录（history/备份/派发日志），本机验收测试动态取用
         config: cfg,
         projects: cfg.projects.map(p => projectState(cfg, p)),
         tasks: pendingTasks(),
