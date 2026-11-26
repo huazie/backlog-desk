@@ -1,7 +1,8 @@
 'use strict';
 
 // 静态演示模式：?demo=1（或构建注入 window.__DEMO__ = true）时启用。
-// 所有 API 走内存 mock（源：window.DEMO_DATA，由 demo/ 脱敏示例生成），
+// 所有 API 走内存 mock（源：demo/ 脱敏示例文件——dev 页运行时 fetch + 前端解析，改示例文件即改演示数据；
+// 构建产物由 build:demo 在构建期把 demo/ 内嵌为 __DEMO_DATA__，file:// 双击直开与静态托管零 fetch），
 // 写操作落 localStorage（key pbw-demo-v1，刷新保留），「重置数据」一键恢复初始示例。
 // 非演示态本文件不做任何事，真实服务端行为零改动。
 // ⚠ mock 的清单/任务卡/校验语义与 server.js 是平行实现（非共享模块，避免 CJS/浏览器双环境耦合）；
@@ -9,7 +10,7 @@
 
 (function () {
   const DEMO = /[?&]demo=1/.test(location.search) || window.__DEMO__ === true;
-  if (!DEMO || !window.DEMO_DATA) return;
+  if (!DEMO) return;
 
   const STORE_KEY = 'pbw-demo-v1';
   const TODAY = () => {
@@ -23,20 +24,187 @@
   };
   const clone = v => JSON.parse(JSON.stringify(v));
 
-  // 会话存储：优先恢复本机改动，否则从生成数据深拷贝；
-  // 但 DEMO_DATA 条目内容已更新（dataVersion 变化）时本机缓存作废——示例数据为准，自动重置
-  let store;
-  try { store = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (_) { store = null; }
-  const stale = store && store.config && store.dataVersion !== window.DEMO_DATA.dataVersion;
-  if (!store || !store.config || stale) {
-    if (stale) console.info('[demo] 演示示例数据已更新，本机演示改动已重置为最新示例');
-    store = clone(window.DEMO_DATA);
-    store.tasks = [];
-    persist();
+  /* ---------- demo/ 源文件加载与解析（无预生成 JS） ---------- */
+
+  const MARK_BEGIN = '<!-- backlog:begin -->';
+  const MARK_END = '<!-- backlog:end -->';
+  const DEMO_TOKEN = '{{DEMO}}';
+
+  // 展示路径：~（模拟用户主目录，demo/ 目录本身）保留原样；{{DEMO}} → demo/projects 前缀
+  function toRel(s) {
+    if (s.startsWith('~')) return s;
+    return 'demo/projects' + s.slice(DEMO_TOKEN.length);
   }
+  // 展示路径 → 静态 fetch URL：~ → demo/，其余为相对路径直取
+  function toUrl(relPath) {
+    return relPath.startsWith('~') ? 'demo' + relPath.slice(1) : relPath;
+  }
+
+  async function fetchText(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+    return r.text();
+  }
+
+  // 数据源二态：构建产物内嵌 __DEMO_DATA__.files（file:// 双击直开与静态托管均免 fetch）
+  // > 运行时 fetch demo/ 源文件（dev 服务器 ?demo=1，改源文件即改演示数据）。
+  // readText 参数相对 demo/ 根（config.json / projects/.../改造清单.md / .trae-cn/...）
+  const EMBED_FILES = window.__DEMO_DATA__ && window.__DEMO_DATA__.files;
+
+  function readText(rel) {
+    if (EMBED_FILES) {
+      const c = EMBED_FILES[rel];
+      if (c === undefined) throw new Error(`demo/${rel}: 内嵌数据缺失`);
+      return Promise.resolve(c);
+    }
+    return fetchText('demo/' + rel);
+  }
+
+  function parseItems(text) {
+    const s = text.indexOf(MARK_BEGIN);
+    const e = text.indexOf(MARK_END);
+    if (s === -1 || e === -1 || e < s) return [];
+    return text.slice(s + MARK_BEGIN.length, e).split(/\r?\n/).flatMap(line => {
+      if (!line.startsWith('|')) return [];
+      const cells = line.slice(1, -1).split('|').map(c => c.trim());
+      if (cells.length < 6 || cells[0] === 'id' || /^[-: ]+$/.test(cells[0])) return [];
+      return [{
+        id: cells[0], priority: cells[1], status: cells[2],
+        title: cells[3], note: cells[4], updated: cells[5]
+      }];
+    });
+  }
+
+  function lastSyncOf(text) {
+    const m = text.match(/^> 最后同步：(.+?) ｜/m);
+    return m ? m[1] : null;
+  }
+
+  // 演示数据版本指纹：djb2 hash 适配器配置与所有项目条目（id/状态/标题/note/记忆目录），
+  // 任一变化则版本变——本机 localStorage 缓存的旧演示改动自动重置
+  function hashItems(projects, agents) {
+    const raw = Object.entries(agents || {}).map(([k, a]) => 'agent:' + k + ':' + JSON.stringify(a))
+      .concat(Object.entries(projects)
+        .map(([pid, p]) => pid + ':' + (p.memory?.memoryDir || '') + ':' + p.items.map(i => `${i.id}|${i.status}|${i.title}|${i.note}`).join(';')))
+      .sort().join('\n');
+    let h = 5381;
+    for (let i = 0; i < raw.length; i++) h = ((h << 5) + h + raw.charCodeAt(i)) >>> 0;
+    return h.toString(36);
+  }
+
+  function dailyLogOf(name, text) {
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    return {
+      name,
+      headings: lines.filter(l => /^##\s+/.test(l)).map(l => l.replace(/^##\s+/, '')),
+      lines: lines.length,
+      tail: lines.slice(-5).join('\n')
+    };
+  }
+
+  async function loadDemoData() {
+    const raw = JSON.parse(await readText('config.json'));
+    const agents = {};
+    for (const [k, a] of Object.entries(raw.agents || {})) {
+      agents[k] = { ...a, dispatchCommand: '' }; // 示例适配器不带派发命令：演示态不支持派发
+    }
+    const projects = {};
+    const projectCfgs = [];
+    for (const p of raw.projects || []) {
+      // 记忆目录随项目配置 memoryRoot（{{DEMO}} 或 ~/ 占位符）+ 适配器 memoryDir 推导；
+      // 空串 = memoryRoot 本身；memoryRoot 可在项目外（trae 示例的模拟用户级记忆目录）
+      const projRel = toRel(p.projectRoot || `${DEMO_TOKEN}/${p.id}`);
+      const memRootRel = toRel(p.memoryRoot || p.projectRoot || `${DEMO_TOKEN}/${p.id}`);
+      const memDirCfg = raw.agents[p.agent]?.memoryDir || '';
+      const memDir = memRootRel + (memDirCfg ? '/' + memDirCfg : '');
+      const urlBase = toUrl(memDir);
+      const relBase = urlBase.replace(/^demo\//, ''); // demo/ 根相对路径：内嵌数据与 fetch 共用同一 key 空间
+      const backlogName = raw.agents[p.agent]?.backlogFile || '改造清单.md';
+      const items = parseItems(await readText(`${relBase}/${backlogName}`));
+
+      const contextFiles = [];
+      for (const name of (raw.agents[p.agent]?.contextFiles || [])) {
+        try { contextFiles.push({ name, content: await readText(`${relBase}/${name}`) }); }
+        catch (_) { /* 缺失文件跳过（与服务端 existsSync 行为一致） */ }
+      }
+      const dailyLogs = [];
+      for (const name of (p.dailyFiles || [])) {
+        try { dailyLogs.push(dailyLogOf(name, await readText(`${relBase}/${name}`))); }
+        catch (_) { /* 同上 */ }
+      }
+
+      projects[p.id] = {
+        mtime: 1762600000000 + (projectCfgs.length + 1) * 1000,
+        items,
+        lastSync: lastSyncOf(contextFiles[0]?.content || ''),
+        fingerprint: '0'.repeat(16),
+        memory: { memoryDir: memDir, contextFiles, dailyLogs }
+      };
+      projectCfgs.push({
+        id: p.id, name: p.name,
+        projectRoot: projRel, memoryRoot: memRootRel, agent: p.agent
+      });
+    }
+    return {
+      generatedAt: new Date().toISOString(),
+      dataVersion: hashItems(projects, agents),
+      config: {
+        port: 8788,
+        syncToMemory: raw.syncToMemory !== false,
+        autoWatch: true,
+        autoCalibrate: raw.autoCalibrate !== false,
+        autoTask: raw.autoTask !== false,
+        agents,
+        projects: projectCfgs
+      },
+      projects,
+      tasks: []
+    };
+  }
+
+  /* ---------- 会话存储与 mock ---------- */
+
+  // mock 未就绪时排队挂起（app.js 挂载即 loadState，与演示数据异步加载存在竞态），
+  // 就绪后按序重放；加载失败则放行错误，避免页面静默空白
+  let apiImpl = null;
+  const pendingCalls = [];
+  window.__mockApi = (url, method, body) => {
+    if (apiImpl) return apiImpl(url, method, body);
+    return new Promise((resolve, reject) => pendingCalls.push({ url, method, body, resolve, reject }));
+  };
+
+  let store;
   function persist() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (_) { /* 存储满/隐私模式：仅内存演示 */ }
   }
+
+  (async () => {
+    let data;
+    try {
+      data = await loadDemoData();
+    } catch (e) {
+      console.error('[demo] 演示数据加载失败：', e);
+      for (const c of pendingCalls.splice(0)) c.reject(e);
+      const hint = location.protocol === 'file:'
+        ? '（file:// 直开仅支持构建产物：先 npm run build:demo，再双击打开 build-demo/index.html）'
+        : '（请经 HTTP 服务或静态托管访问）';
+      document.documentElement.insertAdjacentHTML('beforeend',
+        '<div class="demo-load-error">演示数据加载失败：' + String(e.message || e) + hint + '</div>');
+      return;
+    }
+    // 会话存储：优先恢复本机改动，否则从源文件数据深拷贝；
+    // 但源文件内容已更新（dataVersion 变化）时本机缓存作废——示例数据为准，自动重置
+    try { store = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (_) { store = null; }
+    const stale = store && store.config && store.dataVersion !== data.dataVersion;
+    if (!store || !store.config || stale) {
+      if (stale) console.info('[demo] 演示示例数据已更新，本机演示改动已重置为最新示例');
+      store = clone(data);
+      store.tasks = [];
+      persist();
+    }
+    apiImpl = mockApi;
+    for (const c of pendingCalls.splice(0)) apiImpl(c.url, c.method, c.body).then(c.resolve, c.reject);
+  })();
 
   const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
   const STATUSES = ['todo', 'doing', 'done', 'removed'];
@@ -263,7 +431,8 @@
     throw new Error('演示模式不支持该操作：' + method + ' ' + url);
   }
 
-  window.__mockApi = mockApi;
+  // ⚠ 此处不可再直接 window.__mockApi = mockApi：顶部队列包装（未就绪挂起、就绪重放）才是唯一挂载点，
+  //   直接赋值会同步覆盖包装，app.js 首个请求在 store 就绪前进入 mockApi 而报 store.config 读取错误
 
   // 顶栏：演示徽标 + 重置入口
   // .demo-actions 作为 topbar 独立子项插在 brand 之后：PC 端随 flex 落在刷新按钮左侧；

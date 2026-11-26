@@ -8,6 +8,7 @@ const crypto = require('crypto');
 
 const PKG_DIR = __dirname;
 const PUBLIC_DIR = path.join(PKG_DIR, 'public');
+const DEMO_DIR = path.join(PKG_DIR, 'demo');
 const DEV_CONFIG = path.join(PKG_DIR, 'config', 'workbench.json');
 const DEFAULT_CONFIG = path.join(PKG_DIR, 'config', 'default.json');
 const USER_DATA_DIR = path.join(os.homedir(), '.backlog-desk');
@@ -758,8 +759,14 @@ function memoryView(cfg, p) {
 
 function serveStatic(pathname, res) {
   const rel = pathname === '/' ? 'index.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
-  const file = path.resolve(PUBLIC_DIR, rel);
-  if (!file.startsWith(PUBLIC_DIR + path.sep)) return json(res, 403, { ok: false, error: '禁止访问' });
+  // demo/** → 包内 demo/ 脱敏示例（只读）：演示态前端运行时 fetch 源文件，无预生成数据
+  let base = PUBLIC_DIR, sub = rel;
+  if (rel === 'demo' || rel.startsWith('demo/')) {
+    base = DEMO_DIR;
+    sub = rel === 'demo' ? '' : rel.slice('demo/'.length);
+  }
+  const file = path.resolve(base, sub);
+  if (!file.startsWith(base + path.sep)) return json(res, 403, { ok: false, error: '禁止访问' });
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
     return json(res, 404, { ok: false, error: '文件不存在' });
   }

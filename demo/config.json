@@ -34,21 +34,24 @@
       "name": "sample-web 示例站点",
       "projectRoot": "{{DEMO}}/sample-web",
       "memoryRoot": "{{DEMO}}/sample-web",
-      "agent": "workbuddy"
+      "agent": "workbuddy",
+      "dailyFiles": ["2026-11-09.md"]
     },
     {
       "id": "sample-cli",
       "name": "sample-cli 示例工具",
       "projectRoot": "{{DEMO}}/sample-cli",
       "memoryRoot": "{{DEMO}}/sample-cli",
-      "agent": "workbuddy"
+      "agent": "workbuddy",
+      "dailyFiles": ["2026-11-09.md"]
     },
     {
       "id": "sample-trae",
       "name": "sample-trae 移动端示例",
       "projectRoot": "{{DEMO}}/sample-trae",
       "memoryRoot": "~/.trae-cn/memory/projects/-demo-projects-sample-trae--p2-026388253ca653c8816c",
-      "agent": "trae"
+      "agent": "trae",
+      "dailyFiles": ["2026-11-10.md"]
     }
   ]
 }
