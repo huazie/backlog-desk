@@ -138,12 +138,20 @@ function cmdDemo() {
   const dataDir = path.join(os.tmpdir(), 'backlog-desk-demo');
   fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   fs.mkdirSync(dataDir, { recursive: true });
-  // 示例复制到数据目录后再校准：包内 demo/ 始终只读，运行态只写临时副本
+  // demo/ 目录即模拟用户主目录：整目录镜像到临时数据根（projects/ 与 .trae-cn/ 等示例记忆一并落位），
+  // 包内 demo/ 始终只读，运行态只写临时副本
+  fs.cpSync(demoDir, dataDir, { recursive: true });
   const demoRoot = path.join(dataDir, 'projects');
-  fs.cpSync(path.join(demoDir, 'projects'), demoRoot, { recursive: true });
   // 在对象上替换占位符再交给 JSON.stringify：路径里的 $& / 引号 / 反斜杠都不会破坏配置
+  // {{DEMO}} → 临时 projects 根；~ → 临时数据根（模拟用户主目录，与服务端 expandHome 的真实家目录语义隔离）
+  const home = dataDir.replace(/\\/g, '/');
   const expandDemo = v => {
-    if (typeof v === 'string') return v.split('{{DEMO}}').join(demoRoot.replace(/\\/g, '/'));
+    if (typeof v === 'string') {
+      let s = v.split('{{DEMO}}').join(demoRoot.replace(/\\/g, '/'));
+      if (s.startsWith('~/')) s = home + s.slice(1);
+      else if (s === '~') s = home;
+      return s;
+    }
     if (Array.isArray(v)) return v.map(expandDemo);
     if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, expandDemo(x)]));
     return v;
