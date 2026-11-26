@@ -143,14 +143,13 @@ function cmdDemo() {
   fs.cpSync(demoDir, dataDir, { recursive: true });
   const demoRoot = path.join(dataDir, 'projects');
   // 在对象上替换占位符再交给 JSON.stringify：路径里的 $& / 引号 / 反斜杠都不会破坏配置
-  // {{DEMO}} → 临时 projects 根；~ → 临时数据根（模拟用户主目录，与服务端 expandHome 的真实家目录语义隔离）
-  const home = dataDir.replace(/\\/g, '/');
+  // {{DEMO}} → 临时 projects 根；~ → 临时数据根（模拟用户主目录，与服务端 expandHome 的真实家目录语义隔离）；
+  // 展开后 path.normalize 归一为原生分隔符——与视图层 path.resolve 形态一致，表单原串与卡片展示不出现两种斜杠
   const expandDemo = v => {
     if (typeof v === 'string') {
-      let s = v.split('{{DEMO}}').join(demoRoot.replace(/\\/g, '/'));
-      if (s.startsWith('~/')) s = home + s.slice(1);
-      else if (s === '~') s = home;
-      return s;
+      let s = v.split('{{DEMO}}').join(demoRoot);
+      if (s.startsWith('~/') || s === '~') s = path.join(dataDir, s === '~' ? '' : s.slice(2));
+      return s === v ? v : path.normalize(s);
     }
     if (Array.isArray(v)) return v.map(expandDemo);
     if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, expandDemo(x)]));
