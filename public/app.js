@@ -193,7 +193,8 @@ function renderBoard() {
     const badge = commitBadge(it);
     const badgeHtml = badge
       ? `<svg class="git-ico b-${badge[0]}" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><title>${esc(badge[1])}：${esc(badge[2])}</title>${GIT_ICONS[badge[0]]}</svg>` : '';
-    return `<tr data-id="${esc(it.id)}" class="s-${esc(it.status)}">
+    // done 行携带提交态类（b-pushed 等），供降权样式区分「已完成且已推送」的更强弱化（#42）
+    return `<tr data-id="${esc(it.id)}" class="s-${esc(it.status)}${badge ? ' b-' + esc(badge[0]) : ''}">
       <td class="c-id mono">#${esc(it.id)}</td>
       <td><select class="cell-sel" data-field="priority" data-p="${esc(it.priority)}">${optP}</select></td>
       <td><span class="st-wrap"><select class="cell-sel" data-field="status" data-s="${esc(it.status)}">${optS}</select>${badgeHtml}</span></td>
@@ -553,6 +554,24 @@ $('#new-priority').addEventListener('change', e => { e.target.dataset.p = e.targ
 $('#q').addEventListener('input', e => { S.filter.q = e.target.value; renderBoard(); });
 $('#f-priority').addEventListener('change', e => { S.filter.priority = e.target.value; renderBoard(); });
 $('#f-status').addEventListener('change', e => { S.filter.status = e.target.value; renderBoard(); });
+
+// 已完成行降权（#42）：仅「已推送」行进入紧凑展示态（控件 pointer-events 已关闭），
+// 桌面 hover 即恢复完整展示态；触屏无 hover，点行临时展开。展开为临时态（#46 修订）：
+// 鼠标离行或点击行外即自动收起，不再锁定——避免误点后行卡在展开态
+$('#items-body').addEventListener('click', e => {
+  const tr = e.target.closest('tr.s-done.b-pushed');
+  if (!tr || e.target.closest('select, input, button')) return;
+  tr.classList.toggle('edit');
+});
+document.addEventListener('click', e => {
+  if (e.target.closest('tr.s-done.b-pushed')) return;
+  document.querySelectorAll('#items-body tr.s-done.b-pushed.edit')
+    .forEach(tr => tr.classList.remove('edit'));
+});
+$('#items-body').addEventListener('mouseout', e => {
+  const tr = e.target.closest('tr.s-done.b-pushed.edit');
+  if (tr && !tr.contains(e.relatedTarget)) tr.classList.remove('edit');
+});
 
 $('#btn-refresh').addEventListener('click', () =>
   loadState().then(() => toast('已从磁盘重新读取')).catch(e => toast(e.message, 'err')));

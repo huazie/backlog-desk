@@ -216,8 +216,41 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
 .items td { padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .items tr:last-child td { border-bottom: none; }
 .items tr:hover td { background: var(--surface-2); }
-.items tr.s-removed td { opacity: .58; }
+/* 已移除行（#42 修订）：淡红底 + 删除线 + 状态列红字，与「已完成-已推送」的
+   灰暗紧凑态一瞥即分；色底与已提交(淡蓝)/未提交(淡琥珀)同族标注语义 */
+.items tr.s-removed td { background: var(--danger-soft); }
+.items tr.s-removed .cell-input { text-decoration: line-through; color: var(--text-3); }
+.items tr.s-removed .cell-sel { color: var(--danger); }
 .items tr.s-done .c-title input { color: var(--text-2); }
+/* ---- 已完成行分态展示（#42）：降权压缩只给「已推送」的（落袋为安，done 行过多致滚动过长）；
+   「已提交（待推送）」与「未提交（待 commit）」还需动作，保持醒目并以淡色底标注；
+   紧凑态控件保留在 DOM 中但退化为纯文本感，hover 或点击（.edit 类，触屏无 hover 的替代
+   路径）临时恢复完整编辑态 ---- */
+.items tr.s-done.b-pushed { opacity: .42; filter: grayscale(.8); }
+.items tr.s-done.b-pushed td { padding-top: 1px; padding-bottom: 1px; }
+.items tr.s-done.b-pushed .git-ico { width: 11px; height: 11px; }
+.items tr.s-done.b-pushed .cell-sel,
+.items tr.s-done.b-pushed .cell-input {
+  pointer-events: none; padding: 1px 2px; font-size: 11px;
+  border-color: transparent; background: transparent;
+}
+.items tr.s-done.b-pushed .cell-input { text-overflow: ellipsis; }
+.items tr.s-done.b-pushed .cell-input.note { color: var(--text-3); }
+.items tr.s-done.b-pushed .c-op { visibility: hidden; }
+/* 恢复完整编辑态：必须位于紧凑规则之后，同特异性靠后者胜出 */
+.items tr.s-done.b-pushed:hover, .items tr.s-done.b-pushed.edit { opacity: 1; filter: none; }
+.items tr.s-done.b-pushed:hover .cell-sel, .items tr.s-done.b-pushed:hover .cell-input,
+.items tr.s-done.b-pushed.edit .cell-sel, .items tr.s-done.b-pushed.edit .cell-input {
+  pointer-events: auto; padding: 3px 5px; font-size: 12px;
+}
+.items tr.s-done.b-pushed:hover .cell-input.note, .items tr.s-done.b-pushed.edit .cell-input.note {
+  font-size: 12px; color: var(--text-2);
+}
+.items tr.s-done.b-pushed:hover .git-ico, .items tr.s-done.b-pushed.edit .git-ico { width: 14px; height: 14px; }
+/* 操作按钮所有态均隐藏（#46 修订，用户确认）：已推送行已锁定编辑，纯只读历史展示 */
+/* 待推送（已提交）与待 commit（未提交）：正常行高与对比度，淡色底区分两档待办动作 */
+.items tr.s-done.b-committed td { background: var(--accent-soft); }
+.items tr.s-done.b-uncommitted td { background: var(--warn-soft); }
 .c-id { width: 42px; color: var(--text-3); font-size: 12px; }
 .c-pri { width: 82px; }
 .c-status { width: 120px; }
