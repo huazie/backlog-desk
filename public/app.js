@@ -11,7 +11,8 @@ const S = {
   memory: null,
   tasks: [],
   track: null,
-  filter: { q: '', status: 'all', priority: 'all' }
+  // 多选筛选（#43）：空数组 = 全部（'open' 仅待处理为伪状态，等价 todo+doing 复合选择）
+  filter: { q: '', status: [], priority: [] }
 };
 
 let lastMtimes = '';
@@ -174,9 +175,12 @@ function renderBoard() {
 
   const f = S.filter;
   const rows = p.items.filter(it => {
-    if (f.priority !== 'all' && it.priority !== f.priority) return false;
-    if (f.status === 'open' && (it.status === 'done' || it.status === 'removed')) return false;
-    if (f.status !== 'all' && f.status !== 'open' && it.status !== f.status) return false;
+    if (f.priority.length && !f.priority.includes(it.priority)) return false;
+    if (f.status.length) {
+      const sel = new Set(f.status);
+      if (sel.has('open')) { sel.add('todo'); sel.add('doing'); }
+      if (!sel.has(it.status)) return false;
+    }
     const q = f.q.trim().toLowerCase();
     return !q || (it.title + ' ' + it.note).toLowerCase().includes(q);
   });
@@ -552,8 +556,64 @@ $('#add-form').addEventListener('submit', async e => {
 
 $('#new-priority').addEventListener('change', e => { e.target.dataset.p = e.target.value; });
 $('#q').addEventListener('input', e => { S.filter.q = e.target.value; renderBoard(); });
-$('#f-priority').addEventListener('change', e => { S.filter.priority = e.target.value; renderBoard(); });
-$('#f-status').addEventListener('change', e => { S.filter.status = e.target.value; renderBoard(); });
+
+// 多选筛选下拉：按钮 + 弹出复选面板，按钮外观与 select 一致；空选 = 全部（按钮显示
+// allLabel），选中项以顿号串联回显；点面板外或 Esc 关闭，打开一个自动收起其他
+function initMultiSelect(root, { allLabel, options, get, set }) {
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'msel-btn';
+  btn.id = root.id.replace('ms-', 'f-');
+  const pop = document.createElement('div');
+  pop.className = 'msel-pop'; pop.hidden = true;
+  pop.innerHTML = options.map(o =>
+    `<label class="msel-opt"><input type="checkbox" value="${esc(o.v)}"><span>${esc(o.l)}</span></label>`).join('');
+  root.append(btn, pop);
+
+  const sync = () => {
+    const sel = get();
+    pop.querySelectorAll('input').forEach(cb => { cb.checked = sel.includes(cb.value); });
+    btn.textContent = sel.length
+      ? options.filter(o => sel.includes(o.v)).map(o => o.l).join('、')
+      : allLabel;
+    btn.classList.toggle('active', sel.length > 0);
+  };
+  btn.addEventListener('click', e => {
+    e.stopPropagation(); // 按钮点击不冒泡到 document 关闭监听，否则刚打开即被自身关闭
+    const wasOpen = !pop.hidden;
+    document.querySelectorAll('.msel-pop').forEach(p => { p.hidden = true; });
+    pop.hidden = wasOpen;
+  });
+  pop.addEventListener('click', e => e.stopPropagation());
+  pop.addEventListener('change', e => {
+    if (!e.target.matches('input')) return;
+    set([...pop.querySelectorAll('input')].filter(cb => cb.checked).map(cb => cb.value));
+    sync();
+  });
+  document.addEventListener('click', () => { pop.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') pop.hidden = true; });
+  sync();
+}
+
+initMultiSelect($('#ms-priority'), {
+  allLabel: '全部优先级',
+  options: PRIORITIES.map(v => ({ v, l: v })),
+  get: () => S.filter.priority,
+  set: v => { S.filter.priority = v; renderBoard(); }
+});
+initMultiSelect($('#ms-status'), {
+  allLabel: '全部状态',
+  options: [
+    { v: 'open', l: '仅待处理' },
+    { v: 'todo', l: '待办' },
+    { v: 'doing', l: '进行中' },
+    { v: 'done-uncommitted', l: '已完成·未提交' },
+    { v: 'done-committed', l: '已完成·已提交' },
+    { v: 'done-pushed', l: '已完成·已推送' },
+    { v: 'removed', l: '已移除' }
+  ],
+  get: () => S.filter.status,
+  set: v => { S.filter.status = v; renderBoard(); }
+});
 
 // 已完成行降权（#42）：仅「已推送」行进入紧凑展示态（控件 pointer-events 已关闭），
 // 桌面 hover 即恢复完整展示态；触屏无 hover，点行临时展开。展开为临时态（#46 修订）：
