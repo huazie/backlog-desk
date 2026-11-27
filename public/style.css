@@ -270,6 +270,7 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
   border-color: transparent; background: transparent;
 }
 .items tr.s-done.b-pushed .cell-input { text-overflow: ellipsis; }
+.items tr.s-done.b-pushed .cell-input[readonly] { cursor: default; } /* 锁定编辑（#46）：可选中复制，不显编辑光标 */
 .items tr.s-done.b-pushed .cell-input.note { color: var(--text-3); }
 .items tr.s-done.b-pushed .c-op { visibility: hidden; }
 /* 恢复完整编辑态：必须位于紧凑规则之后，同特异性靠后者胜出 */

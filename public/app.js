@@ -192,6 +192,11 @@ function renderBoard() {
   });
 
   $('#items-body').innerHTML = rows.map(it => {
+    const badge = commitBadge(it);
+    // 已推送 = 终态锁定（#46）：note 是提交态唯一留痕锚（commit+hash+已推送窗口），
+    // 手滑改动会掉档徽标并经自动保存同步进记忆；title/note readonly（可选中复制），
+    // 优先级/状态下拉 disabled；hover 展开仅用于查看全文
+    const ro = !!badge && badge[0] === 'pushed';
     const optP = PRIORITIES.map(x =>
       `<option value="${x}" ${x === it.priority ? 'selected' : ''}>${x}</option>`).join('');
     // 「已完成」只能由 Agent 按约定回写、「已移除」只能由右侧「移除」按钮完成，
@@ -200,16 +205,15 @@ function renderBoard() {
       const locked = (v === 'done' || v === 'removed') && v !== it.status;
       return `<option value="${v}" ${v === it.status ? 'selected' : ''}${locked ? ' disabled' : ''}>${l}</option>`;
     }).join('');
-    const badge = commitBadge(it);
     const badgeHtml = badge
       ? `<svg class="git-ico b-${badge[0]}" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><title>${esc(badge[1])}：${esc(badge[2])}</title>${GIT_ICONS[badge[0]]}</svg>` : '';
     // done 行携带提交态类（b-pushed 等），供降权样式区分「已完成且已推送」的更强弱化（#42）
     return `<tr data-id="${esc(it.id)}" class="s-${esc(it.status)}${badge ? ' b-' + esc(badge[0]) : ''}">
       <td class="c-id mono">#${esc(it.id)}</td>
-      <td><select class="cell-sel" data-field="priority" data-p="${esc(it.priority)}">${optP}</select></td>
-      <td><span class="st-wrap"><select class="cell-sel" data-field="status" data-s="${esc(it.status)}">${optS}</select>${badgeHtml}</span></td>
-      <td><input class="cell-input" data-field="title" value="${esc(it.title)}" title="${esc(it.title)}"></td>
-      <td><input class="cell-input note" data-field="note" value="${esc(it.note)}" title="${esc(it.note)}"></td>
+      <td><select class="cell-sel" data-field="priority" data-p="${esc(it.priority)}"${ro ? ' disabled title="已完成并推送，锁定编辑"' : ''}>${optP}</select></td>
+      <td><span class="st-wrap"><select class="cell-sel" data-field="status" data-s="${esc(it.status)}"${ro ? ' disabled title="已完成并推送，锁定编辑"' : ''}>${optS}</select>${badgeHtml}</span></td>
+      <td><input class="cell-input" data-field="title" value="${esc(it.title)}" title="${esc(it.title)}"${ro ? ' readonly' : ''}></td>
+      <td><input class="cell-input note" data-field="note" value="${esc(it.note)}" title="${esc(it.note)}"${ro ? ' readonly' : ''}></td>
       <td class="c-date mono">${esc(it.updated)}</td>
       <td class="c-op">
         <button class="op" data-act="remove">移除</button>
