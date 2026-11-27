@@ -216,7 +216,7 @@ function renderBoard() {
       <td><input class="cell-input note" data-field="note" value="${esc(it.note)}" title="${esc(it.note)}"${ro ? ' readonly' : ''}></td>
       <td class="c-date mono">${esc(it.updated)}</td>
       <td class="c-op">
-        <button class="op" data-act="remove">移除</button>
+        ${it.status === 'removed' ? '' : '<button class="op" data-act="remove">移除</button>'}
         <button class="op hard" data-act="hard" title="彻底删除">×</button>
       </td>
     </tr>`;
