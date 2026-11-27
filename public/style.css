@@ -185,8 +185,9 @@ a { color: var(--accent); }
 
 .board { min-width: 0; overflow-y: auto; padding: 18px 20px 40px; }
 .board-head {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
+  /* 筛选行固定在标题下方（用户要求）：不再 space-between 挤标题右侧随宽窄飘动 */
+  display: flex; flex-direction: column; gap: 12px;
+  margin-bottom: 14px;
 }
 .board-title-wrap { min-width: 0; }
 .board h2 { margin: 0; font-size: 16px; font-weight: 500; }
