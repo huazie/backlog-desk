@@ -179,7 +179,13 @@ function renderBoard() {
     if (f.status.length) {
       const sel = new Set(f.status);
       if (sel.has('open')) { sel.add('todo'); sel.add('doing'); }
-      if (!sel.has(it.status)) return false;
+      // 「已完成·未提交/已提交/已推送」为拆分伪状态（#45），按 note 留痕的提交态细分匹配
+      let ok = sel.has(it.status);
+      if (!ok && it.status === 'done') {
+        const badge = commitBadge(it);
+        ok = !!badge && sel.has('done-' + badge[0]);
+      }
+      if (!ok) return false;
     }
     const q = f.q.trim().toLowerCase();
     return !q || (it.title + ' ' + it.note).toLowerCase().includes(q);
@@ -566,15 +572,20 @@ function initMultiSelect(root, { allLabel, options, get, set }) {
   const pop = document.createElement('div');
   pop.className = 'msel-pop'; pop.hidden = true;
   pop.innerHTML = options.map(o =>
-    `<label class="msel-opt"><input type="checkbox" value="${esc(o.v)}"><span>${esc(o.l)}</span></label>`).join('');
+    `<label class="msel-opt"><input type="checkbox" value="${esc(o.v)}"><span>${esc(o.pl || o.l)}</span>${o.ico
+      ? `<svg class="git-ico b-${esc(o.ico)}" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><title>${esc(o.tip || o.l)}</title>${GIT_ICONS[o.ico]}</svg>`
+      : ''}</label>`).join('');
   root.append(btn, pop);
 
   const sync = () => {
     const sel = get();
     pop.querySelectorAll('input').forEach(cb => { cb.checked = sel.includes(cb.value); });
-    btn.textContent = sel.length
-      ? options.filter(o => sel.includes(o.v)).map(o => o.l).join('、')
-      : allLabel;
+    // 带图标的选项回显为「文案 + 同款图标」（与面板一致）；纯文字选项维持 esc 文本
+    btn.innerHTML = sel.length
+      ? options.filter(o => sel.includes(o.v)).map(o => o.ico
+          ? `<span>${esc(o.pl || o.l)}</span><svg class="git-ico b-${esc(o.ico)}" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><title>${esc(o.tip || o.l)}</title>${GIT_ICONS[o.ico]}</svg>`
+          : esc(o.l)).join('、')
+      : esc(allLabel);
     btn.classList.toggle('active', sel.length > 0);
   };
   btn.addEventListener('click', e => {
@@ -602,13 +613,14 @@ initMultiSelect($('#ms-priority'), {
 });
 initMultiSelect($('#ms-status'), {
   allLabel: '全部状态',
+  // 「已完成」拆为三档提交态伪状态（#45）：匹配逻辑见 renderBoard（done-' + badge[0]）
   options: [
     { v: 'open', l: '仅待处理' },
     { v: 'todo', l: '待办' },
     { v: 'doing', l: '进行中' },
-    { v: 'done-uncommitted', l: '已完成·未提交' },
-    { v: 'done-committed', l: '已完成·已提交' },
-    { v: 'done-pushed', l: '已完成·已推送' },
+    { v: 'done-uncommitted', l: '已完成·未提交', pl: '已完成', ico: 'uncommitted', tip: '未提交' },
+    { v: 'done-committed', l: '已完成·已提交', pl: '已完成', ico: 'committed', tip: '已提交' },
+    { v: 'done-pushed', l: '已完成·已推送', pl: '已完成', ico: 'pushed', tip: '已推送' },
     { v: 'removed', l: '已移除' }
   ],
   get: () => S.filter.status,

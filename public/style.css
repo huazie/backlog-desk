@@ -215,6 +215,7 @@ a { color: var(--accent); }
   transform: rotate(45deg) translateY(-2px);
 }
 .msel-btn.active { border-color: var(--accent); color: var(--accent); }
+.msel-btn .git-ico { vertical-align: -1.5px; margin-left: 2px; } /* 实测校正：使图标中心与文字中心齐平（middle 偏低 2.25px） */
 .msel-pop {
   position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
   min-width: 100%; width: max-content; max-width: 240px;
