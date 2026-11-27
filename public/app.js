@@ -11,7 +11,9 @@ const S = {
   memory: null,
   tasks: [],
   track: null,
-  // 多选筛选（#43）：空数组 = 全部（'open' 仅待处理为伪状态，等价 todo+doing 复合选择）
+  // 多选筛选：空数组 = 全部（状态里的 'open' 仅待处理为伪状态，等价 todo+doing 复合选择）；
+  // filter 为当前项目条目的引用（attachFilter 绑定），filters 按项目 id 分存（#48）
+  filters: null,
   filter: { q: '', status: [], priority: [] }
 };
 
@@ -41,6 +43,25 @@ async function api(url, method = 'GET', body) {
 const activeProject = () => S.projects.find(p => p.id === S.active);
 // 项目选择持久化 key：演示态独立，避免 demo 页的选择记忆与真实页互相覆盖（demo.js 先于本文件挂载 __mockApi）
 const PROJ_KEY = window.__mockApi ? 'pbw-project-demo' : 'pbw-project';
+// 筛选按项目独立（#48）：S.filters[projectId] 持有该项目筛选并落 localStorage（刷新恢复），
+// S.filter 指向当前项目的条目；key 随演示态独立，与 PROJ_KEY 同策略
+const FILTER_KEY = window.__mockApi ? 'pbw-filters-demo' : 'pbw-filters';
+const newFilter = () => ({ q: '', status: [], priority: [] });
+const readFilters = () => {
+  try { return JSON.parse(localStorage.getItem(FILTER_KEY)) || {}; } catch { return {}; }
+};
+const saveFilters = () => localStorage.setItem(FILTER_KEY, JSON.stringify(S.filters));
+S.filters = readFilters();
+// 绑定当前项目的筛选到 S.filter 并回填控件（切项目与页面恢复共用）
+const attachFilter = () => {
+  if (!S.filters[S.active]) S.filters[S.active] = newFilter();
+  S.filter = S.filters[S.active];
+  saveFilters();
+  const q = $('#q');
+  if (q.value !== S.filter.q) q.value = S.filter.q; // 同值不回写，避免打断输入光标
+  $('#ms-priority')._sync?.();
+  $('#ms-status')._sync?.();
+};
 const activeMtime = () => activeProject()?.mtime ?? null;
 const activeUrl = () => '/api/items/' + encodeURIComponent(S.active);
 const activeTasks = () => S.tasks.filter(t => t.project === S.active);
@@ -67,6 +88,7 @@ async function loadState(withMemory = true) {
   if (!S.projects.some(p => p.id === S.active)) S.active = S.projects[0]?.id ?? null;
   if (S.active) localStorage.setItem(PROJ_KEY, S.active);
   else localStorage.removeItem(PROJ_KEY);
+  attachFilter(); // 恢复/刷新后绑定当前项目的筛选并回填控件（#48）
   renderAll();
   if (withMemory) await loadMemory();
 }
@@ -480,6 +502,7 @@ $('#project-list').addEventListener('click', e => {
   if (!b) return;
   S.active = b.dataset.id;
   localStorage.setItem(PROJ_KEY, S.active);
+  attachFilter(); // 切项目：载入该项目自己的筛选（#48），与全局互不污染
   renderAll();
   loadMemory();
 });
@@ -565,7 +588,7 @@ $('#add-form').addEventListener('submit', async e => {
 });
 
 $('#new-priority').addEventListener('change', e => { e.target.dataset.p = e.target.value; });
-$('#q').addEventListener('input', e => { S.filter.q = e.target.value; renderBoard(); });
+$('#q').addEventListener('input', e => { S.filter.q = e.target.value; saveFilters(); renderBoard(); });
 
 // 多选筛选下拉：按钮 + 弹出复选面板，按钮外观与 select 一致；空选 = 全部（按钮显示
 // allLabel），选中项以顿号串联回显；点面板外或 Esc 关闭，打开一个自动收起其他
@@ -607,13 +630,14 @@ function initMultiSelect(root, { allLabel, options, get, set }) {
   document.addEventListener('click', () => { pop.hidden = true; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') pop.hidden = true; });
   sync();
+  root._sync = sync; // 供切项目/页面恢复时回填按钮回显与勾选态（attachFilter 调用）
 }
 
 initMultiSelect($('#ms-priority'), {
   allLabel: '全部优先级',
   options: PRIORITIES.map(v => ({ v, l: v })),
   get: () => S.filter.priority,
-  set: v => { S.filter.priority = v; renderBoard(); }
+  set: v => { S.filter.priority = v; saveFilters(); renderBoard(); }
 });
 initMultiSelect($('#ms-status'), {
   allLabel: '全部状态',
@@ -628,7 +652,7 @@ initMultiSelect($('#ms-status'), {
     { v: 'removed', l: '已移除' }
   ],
   get: () => S.filter.status,
-  set: v => { S.filter.status = v; renderBoard(); }
+  set: v => { S.filter.status = v; saveFilters(); renderBoard(); }
 });
 
 // 已完成行降权（#42）：仅「已推送」行进入紧凑展示态（控件 pointer-events 已关闭），
