@@ -37,11 +37,11 @@
     </aside>
 
     <main class="board">
+      <!-- 项目名吸顶（#54）：必须是 .board 直接子元素，否则包含块是 board-head、
+           滚过头部就随之上移消失，无法贯穿整个清单滚动 -->
+      <h2 id="board-title">—</h2>
       <div class="board-head">
-        <div class="board-title-wrap">
-          <h2 id="board-title">—</h2>
-          <div class="path" id="board-path"></div>
-        </div>
+        <div class="path" id="board-path"></div>
         <div class="filters">
           <input id="q" type="search" placeholder="搜索改造项" autocomplete="off">
           <div class="msel" id="ms-priority"></div>

@@ -183,14 +183,20 @@ a { color: var(--accent); }
 .proj .op { position: absolute; top: 7px; right: 7px; }
 .rail-foot { margin: 14px 6px; font-size: 11px; color: var(--text-3); }
 
-.board { min-width: 0; overflow-y: auto; padding: 18px 20px 40px; }
+.board { min-width: 0; overflow-y: auto; padding: 0 20px 40px; --title-sticky-h: 50px; }
+/* 项目名吸顶（#54）：sticky 相对 .board 滚动口，贯穿整个清单滚动；其余内容正常滚。
+   board 顶部 padding 收进标题盒（scrollport 不含容器 padding，否则钉位上方留缝漏行），
+   --title-sticky-h 供 th 吸顶位对齐 */
+#board-title {
+  position: sticky; top: 0; z-index: 22;
+  margin: 0; font-size: 16px; font-weight: 500;
+  background: var(--bg); padding: 18px 0 6px; /* 背景遮住从底下滚过的行 */
+}
 .board-head {
   /* 筛选行固定在标题下方（用户要求）：不再 space-between 挤标题右侧随宽窄飘动 */
   display: flex; flex-direction: column; gap: 12px;
   margin-bottom: 14px;
 }
-.board-title-wrap { min-width: 0; }
-.board h2 { margin: 0; font-size: 16px; font-weight: 500; }
 .path { color: var(--text-3); font-size: 11px; margin-top: 5px; word-break: break-all; }
 .path code { color: var(--text-2); }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -251,9 +257,29 @@ a { color: var(--accent); }
 }
 
 .table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: auto; background: var(--surface); }
+/* 表头吸顶前提（#54）：wrap 不能是滚动容器，否则 th 的 sticky 相对 wrap（永不纵滚）失效。
+   表格装得下时（JS 加 .fit）逃逸为 visible，sticky 相对 .board 生效；装不下时保持 auto 横滚 */
+.table-wrap.fit { overflow: visible; }
+/* 克隆表头（#54 追加）：表格装不下需横滚时，原生 th sticky 相对永不纵滚的 wrap 失效——
+   thead 克隆到 wrap 外的 #table-sticky-head，靠容器自身 sticky 相对 .board 钉住，
+   横滚偏移由 JS 同步（数据区 scroll → 克隆表 translateX 反向平移） */
+#table-sticky-head {
+  display: none;
+  position: sticky; top: var(--title-sticky-h); z-index: 1;
+  overflow: hidden; /* 裁掉克隆表右侧超出部分，圆角也靠它裁 th 方角 */
+  border-radius: 10px 10px 0 0;
+}
+#table-sticky-head.show { display: block; }
+#table-sticky-head table.items { margin: 0; } /* 列宽对齐：与原表同规则（width:100%+min-width） */
+#table-sticky-head th { position: static; } /* 克隆 th 不参与 sticky，钉住由容器负责 */
+.table-wrap.cloned thead { display: none; } /* 原生表头让位给克隆版，避免双表头 */
+.table-wrap.fit th:first-child { border-top-left-radius: 9px; }
+.table-wrap.fit th:last-child { border-top-right-radius: 9px; }
+.table-wrap.fit tr:last-child td:first-child { border-bottom-left-radius: 9px; }
+.table-wrap.fit tr:last-child td:last-child { border-bottom-right-radius: 9px; }
 table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
 .items th {
-  position: sticky; top: 0; z-index: 1;
+  position: sticky; top: var(--title-sticky-h); z-index: 1; /* top=吸顶标题高度（.board 定义），紧贴其下 */
   background: var(--surface-2); color: var(--text-2);
   font-size: 11px; font-weight: 500; text-align: left;
   padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap;
@@ -498,7 +524,9 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
   .rail-foot { margin: 6px 6px 2px; } /* 内容保留（用户确认），仅收紧行距 */
   /* 标题下「代码/清单」两行长路径窄屏换行占 3 行（#51），信息价值低、隐藏 */
   #board-path { display: none; }
-  .board { padding: 14px 12px 30px; }
+  /* 顶部 padding 收进吸顶标题盒（#54），--title-sticky-h 同步其盒高 14+25.6+6 */
+  .board { padding: 0 12px 30px; --title-sticky-h: 46px; }
+  #board-title { padding-top: 14px; }
   /* 手机端筛选区：搜索独占一行，优先级与状态各占一半 */
   .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   /* > 限定搜索框：否则 width:100% 会命中面板内 checkbox（.msel-opt input 复位在前被覆盖），

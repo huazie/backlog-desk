@@ -244,6 +244,56 @@ function renderBoard() {
     </tr>`;
   }).join('');
   $('#empty').hidden = rows.length > 0;
+  syncTableWrapFit();
+}
+
+// 表头吸顶前提（#54）：表格装得下时 wrap 加 .fit 逃逸为非滚动容器（CSS overflow:visible），
+// th 的 sticky 才相对 .board 生效；装不下时保持 auto 横滚——此时原生 th 的 sticky 相对
+// 永不纵滚的 wrap 失效，改用克隆表头方案（#54 追加）：thead 克隆到 wrap 外的
+// #table-sticky-head（sticky 相对 .board 生效），横滚偏移由 scroll 事件同步
+function syncTableWrapFit() {
+  document.querySelectorAll('.table-wrap').forEach(w => {
+    const fit = w.scrollWidth <= w.clientWidth;
+    w.classList.toggle('fit', fit);
+    if (fit) removeStickyHead(w); else buildStickyHead(w);
+  });
+}
+window.addEventListener('resize', syncTableWrapFit);
+
+function buildStickyHead(wrap) {
+  const src = wrap.querySelector('table.items thead');
+  if (!src) return;
+  let head = wrap.previousElementSibling;
+  if (!head || head.id !== 'table-sticky-head') {
+    head = document.createElement('div');
+    head.id = 'table-sticky-head';
+    head.innerHTML = '<table class="items"><thead></thead></table>';
+    wrap.before(head);
+    // 数据区横滚 → 克隆表头反向平移同步，列保持对齐（容器 overflow hidden 裁剪）
+    wrap.addEventListener('scroll', () => {
+      const it = head.querySelector('table.items');
+      if (it) it.style.transform = 'translateX(' + (-wrap.scrollLeft) + 'px)';
+    }, { passive: true });
+  }
+  const ct = head.querySelector('table.items');
+  ct.style.transform = 'translateX(' + (-wrap.scrollLeft) + 'px)';
+  head.querySelector('thead').replaceChildren(src.cloneNode(true));
+  head.classList.add('show');
+  wrap.classList.add('cloned'); // 先藏原生 thead——此后显示表格列宽由 tbody 单独决定
+  // 列宽对齐（#54）：thead 藏后原表列宽与克隆表（完整 thead+tbody 布局）不再一致，
+  // 克隆表改 fixed 布局，按显示中 tbody 首行实测列宽逐列写入
+  const dt = wrap.querySelector('table.items');
+  ct.style.tableLayout = 'fixed';
+  const cells = dt.querySelectorAll('tbody tr:first-child > *');
+  const cths = ct.querySelectorAll('thead th');
+  cells.forEach((c, i) => { if (cths[i]) cths[i].style.width = c.offsetWidth + 'px'; });
+  ct.style.width = dt.offsetWidth + 'px';
+}
+
+function removeStickyHead(wrap) {
+  const head = wrap.previousElementSibling;
+  if (head && head.id === 'table-sticky-head') head.remove();
+  wrap.classList.remove('cloned');
 }
 
 function renderTrackBar() {
