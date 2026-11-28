@@ -284,14 +284,21 @@ function buildStickyHead(wrap) {
   }
   const ct = head.querySelector('table.items');
   ct.style.transform = 'translateX(' + (-wrap.scrollLeft) + 'px)';
-  head.querySelector('thead').replaceChildren(src.cloneNode(true));
+  // 克隆 thead 的行（tr）而非 thead 本身——replaceChildren(thead) 会造出 thead 嵌套
+  // thead 的非法结构（#57 顺带修复），靠浏览器表格布局修复算法兜底，脆弱
+  head.querySelector('thead').replaceChildren(...src.cloneNode(true).children);
   head.classList.add('show');
   wrap.classList.add('cloned'); // 先藏原生 thead——此后显示表格列宽由 tbody 单独决定
   // 列宽对齐（#54）：thead 藏后原表列宽与克隆表（完整 thead+tbody 布局）不再一致，
   // 克隆表改 fixed 布局，按显示中 tbody 首行实测列宽逐列写入
   const dt = wrap.querySelector('table.items');
   ct.style.tableLayout = 'fixed';
-  const cells = dt.querySelectorAll('tbody tr:first-child > *');
+  // 量宽探测行必须取第一条「非分组头且可见」的数据行（#57）：
+  // tbody 首行可能是 done-ghead（colspan=7，量出来是整表宽，塞给 th[0] 列宽全乱），
+  // 也可能是 grp-off（display:none，量出来是 0）
+  const probe = [...dt.querySelectorAll('tbody tr')].find(tr =>
+    !tr.classList.contains('done-ghead') && tr.offsetWidth > 0);
+  const cells = probe ? probe.querySelectorAll(':scope > *') : [];
   const cths = ct.querySelectorAll('thead th');
   cells.forEach((c, i) => { if (cths[i]) cths[i].style.width = c.offsetWidth + 'px'; });
   ct.style.width = dt.offsetWidth + 'px';
