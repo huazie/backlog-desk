@@ -603,6 +603,10 @@ function initMultiSelect(root, { allLabel, options, get, set }) {
       ? `<svg class="git-ico b-${esc(o.ico)}" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><title>${esc(o.tip || o.l)}</title>${GIT_ICONS[o.ico]}</svg>`
       : ''}</label>`).join('');
   root.append(btn, pop);
+  // 箭头随面板开合翻转（#53）：监听 hidden 属性统一驱动——按钮点击/点外部/滚动收起/
+  // 打开另一面板等任一路径收起都同步，不散落在各关闭分支
+  new MutationObserver(() => btn.classList.toggle('open', !pop.hidden))
+    .observe(pop, { attributes: true, attributeFilter: ['hidden'] });
 
   const sync = () => {
     const sel = get();

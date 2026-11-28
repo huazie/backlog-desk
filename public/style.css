@@ -207,13 +207,19 @@ a { color: var(--accent); }
   font: inherit; color: var(--text); cursor: pointer; text-align: left;
   min-width: 96px; max-width: 220px; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
+  position: relative; /* ::after 箭头绝对定位锚点（#53） */
 }
+.msel > .msel-btn { padding-right: 26px; } /* 箭头绝对定位右侧，文本让出空间防重叠（#53） */
 .msel-btn::after {
-  content: ''; display: inline-block; vertical-align: middle;
-  width: 7px; height: 7px; margin-left: 7px;
+  content: ''; position: absolute; right: 10px; top: 50%;
+  width: 7px; height: 7px;
   border-right: 1.5px solid var(--text-3); border-bottom: 1.5px solid var(--text-3);
-  transform: rotate(45deg) translateY(-2px);
+  /* translateY(-50%) 按自身盒高精确垂直居中（#53）——margin 写死会在 DPR 舍入下偏 1px */
+  transform: translateY(-50%) rotate(45deg);
+  transition: transform .15s;
 }
+/* 面板展开时箭头翻转朝左（#53 用户定稿：收起朝下/展开朝左/恒靠右），随开合动画过渡 */
+.msel-btn.open::after { transform: translateY(-50%) rotate(135deg); }
 .msel-btn.active { border-color: var(--accent); color: var(--accent); }
 .msel-btn .git-ico { vertical-align: -1.5px; margin-left: 2px; } /* 实测校正：使图标中心与文字中心齐平（middle 偏低 2.25px） */
 .msel-pop {
