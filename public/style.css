@@ -217,11 +217,15 @@ a { color: var(--accent); }
 .msel-btn.active { border-color: var(--accent); color: var(--accent); }
 .msel-btn .git-ico { vertical-align: -1.5px; margin-left: 2px; } /* 实测校正：使图标中心与文字中心齐平（middle 偏低 2.25px） */
 .msel-pop {
-  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
+  /* 打开时由 JS 改为 fixed 精确落点（#50）：absolute 会被 .board 的 overflow-y:auto
+     裁剪伸出部分、矮视口下底部选项又被视口截断；max-height 由 JS 按实测空间设定，
+     两边都放不下时内滚兜底 */
+  position: absolute; left: 0; z-index: 30;
   min-width: 100%; width: max-content; max-width: 240px;
   background: var(--surface); border: 1px solid var(--border-strong);
   border-radius: 8px; box-shadow: var(--shadow); padding: 4px;
   display: grid; gap: 1px;
+  overflow-y: auto;
 }
 .msel-opt {
   display: flex; align-items: center; gap: 7px;

@@ -615,12 +615,43 @@ function initMultiSelect(root, { allLabel, options, get, set }) {
       : esc(allLabel);
     btn.classList.toggle('active', sel.length > 0);
   };
+  const closePop = () => { pop.hidden = true; };
+  // 打开时以 fixed 定位精确落点（#50）：.board overflow-y:auto 会裁剪 absolute 面板
+  // 伸出部分，矮视口下底部选项又会被视口截断——fixed 一次逃逸两个约束；
+  // 下方放不下且上方更宽裕时向上翻转
+  const openPop = () => {
+    pop.hidden = false;
+    pop.style.position = 'fixed';
+    const r = btn.getBoundingClientRect();
+    pop.style.left = r.left + 'px';
+    pop.style.minWidth = Math.max(btn.offsetWidth, 100) + 'px'; // fixed 下原 min-width:100% 失效，改对齐按钮宽
+    pop.style.bottom = 'auto';
+    pop.style.top = 'auto';
+    // 三态决策（#50）：下方够→向下；下方不够且上方更宽裕→向上；两边都不够→
+    // 选空间大的一侧并动态收紧 max-height 内滚，面板任何视口下都不伸出屏幕
+    const need = pop.scrollHeight + 12; // 内容高 + border/padding 余量
+    const below = window.innerHeight - r.bottom;
+    const above = r.top;
+    if (below >= need || (above < need && below >= above)) {
+      pop.style.top = (r.bottom + 4) + 'px';
+      pop.style.maxHeight = Math.max(120, below - 8) + 'px';
+      pop.classList.remove('up');
+    } else {
+      pop.style.bottom = (window.innerHeight - r.top + 4) + 'px';
+      pop.style.maxHeight = Math.max(120, above - 8) + 'px';
+      pop.classList.add('up');
+    }
+  };
   btn.addEventListener('click', e => {
     e.stopPropagation(); // 按钮点击不冒泡到 document 关闭监听，否则刚打开即被自身关闭
     const wasOpen = !pop.hidden;
     document.querySelectorAll('.msel-pop').forEach(p => { p.hidden = true; });
-    pop.hidden = wasOpen;
+    if (!wasOpen) openPop();
   });
+  // fixed 面板不随文档滚动，页面滚动/缩放窗口会与按钮错位——直接收起（#50）；
+  // 面板自身内滚（max-height 兜底态）不收起
+  window.addEventListener('scroll', e => { if (!pop.contains(e.target)) pop.hidden = true; }, { capture: true, passive: true });
+  window.addEventListener('resize', closePop);
   pop.addEventListener('click', e => e.stopPropagation());
   pop.addEventListener('change', e => {
     if (!e.target.matches('input')) return;
