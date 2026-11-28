@@ -16,6 +16,7 @@
   --danger-soft: #fdecec;
   --ok: #16845c;
   --ok-soft: #e4f5ee;
+  --ok-soft-hover: #d8efe4;
   --warn: #b87613;
   --warn-soft: #fbf0dc;
   --p0: #cf3f3f;
@@ -45,6 +46,7 @@
   --danger-soft: #341d1d;
   --ok: #4ec58d;
   --ok-soft: #153027;
+  --ok-soft-hover: #1d3f34;
   --warn: #e0a75a;
   --warn-soft: #332613;
   --p0: #f07070;
@@ -324,7 +326,7 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
   font-size: 12px; font-weight: 600; text-align: left;
   padding: 4px 10px; cursor: pointer; user-select: none;
 }
-.items tr.done-ghead:hover td { background: #d8efe4; }
+.items tr.done-ghead:hover td { background: var(--ok-soft-hover); } /* 悬停提亮一档，随主题变量走（#60） */
 .items tr.done-ghead .gchev {
   display: inline-block; width: 7px; height: 7px; margin-right: 6px; vertical-align: 1px;
   border-right: 1.5px solid var(--ok); border-bottom: 1.5px solid var(--ok);
