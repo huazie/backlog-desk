@@ -565,8 +565,7 @@ select.cell-sel {
   .proj { flex: none; width: 178px; margin: 0; padding: 7px 10px; box-sizing: border-box; }
   .proj-name { padding-right: 22px; }
   .rail-foot { margin: 6px 6px 2px; } /* 内容保留（用户确认），仅收紧行距 */
-  /* 标题下「代码/清单」两行长路径窄屏换行占 3 行（#51），信息价值低、隐藏 */
-  #board-path { display: none; }
+  /* 标题下「代码/清单」两行长路径：#51 曾隐藏，用户确认恢复展示（#58） */
   /* 顶部 padding 收进吸顶标题盒（#54），--title-sticky-h 同步其盒高 14+25.6+6 */
   .board { padding: 0 12px 30px; --title-sticky-h: 46px; }
   #board-title { padding-top: 14px; }
