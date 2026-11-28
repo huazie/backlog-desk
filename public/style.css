@@ -495,7 +495,9 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
   .board { padding: 14px 12px 30px; }
   /* 手机端筛选区：搜索独占一行，优先级与状态各占一半 */
   .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .filters input { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
+  /* > 限定搜索框：否则 width:100% 会命中面板内 checkbox（.msel-opt input 复位在前被覆盖），
+     checkbox 拉满一行把文字挤到最右、面板 max-content 也被撑爆出屏（#52） */
+  .filters > input { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
   .filters .msel, .filters .msel-btn { min-width: 0; width: 100%; box-sizing: border-box; }
   .add-form { grid-template-columns: 1fr 88px; }
   .add-form input:nth-of-type(2) { grid-column: 1 / -1; }
