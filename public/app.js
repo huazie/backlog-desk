@@ -147,7 +147,7 @@ function renderProjects() {
     const bad = Object.values(p.health).some(v => !v);
     return `<div class="proj ${p.id === S.active ? 'active' : ''}" data-id="${esc(p.id)}" role="button">
       <span class="proj-name">${esc(p.name)}</span>
-      <span class="proj-meta">${esc(p.agentLabel)} · ${p.items.length} 项 · 待办 ${pending}</span>
+      <span class="proj-meta">${esc(p.agentLabel)} · <span class="nb">${p.items.length} 项</span> · <span class="nb">待处理 ${pending}</span></span>
       <span class="proj-path ${bad ? 'bad' : ''}">${bad ? '路径异常，请检查配置' : '记忆根可达'}</span>
       <button class="op" data-edit-project="${esc(p.id)}" title="编辑项目">✎</button>
     </div>`;

@@ -178,6 +178,7 @@ a { color: var(--accent); }
 .proj.active { background: var(--accent-soft); border-color: var(--accent); }
 .proj-name { display: block; font-size: 13px; font-weight: 500; word-break: break-all; padding-right: 22px; }
 .proj-meta { display: block; color: var(--text-2); font-size: 11px; margin-top: 2px; }
+.proj-meta .nb { white-space: nowrap; } /* 「N 项 / 待处理 N」整体断行，数字不被挤到下一行 */
 .proj-path { display: block; font-size: 11px; margin-top: 3px; color: var(--ok); }
 .proj-path.bad { color: var(--danger); }
 .proj .op { position: absolute; top: 7px; right: 7px; }
