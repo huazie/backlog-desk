@@ -482,10 +482,21 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
   .demo-actions .btn span { display: none; }
   .brand .sub, .stats { display: none; }
   .layout { grid-template-columns: minmax(0, 1fr); }
-  .rail { border-right: none; border-bottom: 1px solid var(--border); }
-  #project-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
-  .proj { margin: 0; }
+  /* 项目区改单行横滑卡片（#51）：内容完整保留（名称/meta/路径/✎），只是从
+     3 列两行网格压成一行横滑，实测占高 224→70px，清单表格重回首屏 */
+  .rail { border-right: none; border-bottom: 1px solid var(--border); padding: 8px 8px 4px; }
+  .rail-title { margin: 0 4px 4px; }
+  #project-list { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  .proj { flex: none; width: 178px; margin: 0; padding: 7px 10px; box-sizing: border-box; }
+  .proj-name { padding-right: 22px; }
+  .rail-foot { margin: 6px 6px 2px; } /* 内容保留（用户确认），仅收紧行距 */
+  /* 标题下「代码/清单」两行长路径窄屏换行占 3 行（#51），信息价值低、隐藏 */
+  #board-path { display: none; }
   .board { padding: 14px 12px 30px; }
+  /* 手机端筛选区：搜索独占一行，优先级与状态各占一半 */
+  .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .filters input { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
+  .filters .msel, .filters .msel-btn { min-width: 0; width: 100%; box-sizing: border-box; }
   .add-form { grid-template-columns: 1fr 88px; }
   .add-form input:nth-of-type(2) { grid-column: 1 / -1; }
   .add-form button { grid-column: 1 / -1; }
