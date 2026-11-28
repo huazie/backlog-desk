@@ -231,25 +231,32 @@ async function closeOwnCards() {
     // 必须留有对应 hash（约定格式「commit <hash> 已提交/已推送」）——防止拆分提交后
     // 漏回写 note，徽标滞留未提交态却无任何校验报错；同一编号多次提交时任一 hash 命中即过
     try {
-      const logOut = require('child_process').execSync('git log --format=%H%x20%s', { cwd: ROOT, encoding: 'utf8' });
-      const hashesById = new Map();
-      for (const line of logOut.split('\n')) {
-        const m = line.match(/^([0-9a-f]{40}) (.*)（#(\d+)）\s*$/);
-        if (m) {
-          if (!hashesById.has(m[3])) hashesById.set(m[3], []);
-          hashesById.get(m[3]).push(m[1].slice(0, 7));
+      const backlogPath = path.join(ROOT, '.workbuddy', 'memory', '改造清单.md');
+      if (!fs.existsSync(backlogPath)) {
+        // 清单刻意不入库（.gitignore 忽略 /.workbuddy/，含真实项目路径的会话记忆），
+        // CI checkout 无此文件——留痕断言是本机协作约定校验，缺清单环境跳过（#61）
+        ok('提交留痕一致性（仓库根无清单，CI 环境跳过）', true);
+      } else {
+        const logOut = require('child_process').execSync('git log --format=%H%x20%s', { cwd: ROOT, encoding: 'utf8' });
+        const hashesById = new Map();
+        for (const line of logOut.split('\n')) {
+          const m = line.match(/^([0-9a-f]{40}) (.*)（#(\d+)）\s*$/);
+          if (m) {
+            if (!hashesById.has(m[3])) hashesById.set(m[3], []);
+            hashesById.get(m[3]).push(m[1].slice(0, 7));
+          }
         }
+        const backlogText = read(backlogPath);
+        const missing = [];
+        for (const [id, hashes] of hashesById) {
+          const row = backlogText.split('\n').find(l => l.startsWith(`| ${id} |`));
+          const note = row ? (row.split('|')[5] || '') : '';
+          if (!hashes.some(h => note.includes(`commit ${h}`))) missing.push(`#${id}(${hashes.join('/')})`);
+        }
+        ok(`提交留痕一致性（git 引用 ${hashesById.size} 项，缺失 ${missing.length}）`,
+          hashesById.size > 0 && missing.length === 0);
+        if (missing.length) console.log('         缺失留痕：' + missing.join('、'));
       }
-      const backlogText = read(path.join(ROOT, '.workbuddy', 'memory', '改造清单.md'));
-      const missing = [];
-      for (const [id, hashes] of hashesById) {
-        const row = backlogText.split('\n').find(l => l.startsWith(`| ${id} |`));
-        const note = row ? (row.split('|')[5] || '') : '';
-        if (!hashes.some(h => note.includes(`commit ${h}`))) missing.push(`#${id}(${hashes.join('/')})`);
-      }
-      ok(`提交留痕一致性（git 引用 ${hashesById.size} 项，缺失 ${missing.length}）`,
-        hashesById.size > 0 && missing.length === 0);
-      if (missing.length) console.log('         缺失留痕：' + missing.join('、'));
     } catch (e) {
       ok('提交留痕一致性（git log 读取失败：' + e.message.slice(0, 60) + '）', false);
     }
