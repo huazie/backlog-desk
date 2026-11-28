@@ -297,8 +297,11 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
    「已提交（待推送）」与「未提交（待 commit）」还需动作，保持醒目并以淡色底标注；
    紧凑态控件保留在 DOM 中但退化为纯文本感，hover 或点击（.edit 类，触屏无 hover 的替代
    路径）临时恢复完整编辑态 ---- */
-.items tr.s-done.b-pushed { opacity: .42; filter: grayscale(.8); }
+.items tr.s-done.b-pushed { opacity: .5; } /* #55 修订：去 grayscale——它把辨识锚点色一并灰化，是「过于不明显」根因；opacity 略提保降权基调 */
 .items tr.s-done.b-pushed td { padding-top: 1px; padding-bottom: 1px; }
+/* 降权行内唯一色锚（#55）：编号与状态列用 --ok 绿 + 加粗，一眼定位「这是已完成」 */
+.items tr.s-done.b-pushed .c-id { color: var(--ok); font-weight: 600; }
+.items tr.s-done.b-pushed .cell-sel { color: var(--ok); font-weight: 600; }
 .items tr.s-done.b-pushed .git-ico { width: 11px; height: 11px; }
 .items tr.s-done.b-pushed .cell-sel,
 .items tr.s-done.b-pushed .cell-input {
@@ -309,6 +312,20 @@ table.items { width: 100%; border-collapse: collapse; min-width: 780px; }
 .items tr.s-done.b-pushed .cell-input[readonly] { cursor: default; } /* 锁定编辑（#46）：可选中复制，不显编辑光标 */
 .items tr.s-done.b-pushed .cell-input.note { color: var(--text-3); }
 .items tr.s-done.b-pushed .c-op { visibility: hidden; }
+/* ---- 已完成折叠分组（#55）：组头行 = 淡绿底紧凑条，chevron 翻转示展开态 ---- */
+.items tr.done-ghead td {
+  background: var(--ok-soft); color: var(--ok);
+  font-size: 12px; font-weight: 600; text-align: left;
+  padding: 4px 10px; cursor: pointer; user-select: none;
+}
+.items tr.done-ghead:hover td { background: #d8efe4; }
+.items tr.done-ghead .gchev {
+  display: inline-block; width: 7px; height: 7px; margin-right: 6px; vertical-align: 1px;
+  border-right: 1.5px solid var(--ok); border-bottom: 1.5px solid var(--ok);
+  transform: rotate(-45deg); transition: transform .15s; /* 折叠 ▸ 朝右 */
+}
+.items tr.done-ghead.open .gchev { transform: rotate(45deg) translateY(-2px); } /* 展开 ▾ 朝下 */
+.items tr.grp-off { display: none; } /* 折叠态组内行隐藏（#55） */
 /* 恢复完整编辑态：必须位于紧凑规则之后，同特异性靠后者胜出 */
 .items tr.s-done.b-pushed:hover, .items tr.s-done.b-pushed.edit { opacity: 1; filter: none; }
 .items tr.s-done.b-pushed:hover .cell-sel, .items tr.s-done.b-pushed:hover .cell-input,

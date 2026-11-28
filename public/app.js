@@ -213,7 +213,13 @@ function renderBoard() {
     return !q || (it.title + ' ' + it.note).toLowerCase().includes(q);
   });
 
-  $('#items-body').innerHTML = rows.map(it => {
+  // —— 已完成折叠分组（#55）：无筛选闲览时，终态已推送行按相邻编号差≤3 串段、
+  // 段长≥5 折成组头行；有筛选（优先级/状态/搜索）时全平铺不折叠
+  const seq = buildDoneGroups(rows, f);
+  $('#items-body').innerHTML = seq.map(en => {
+    if (en.head) return `<tr class="done-ghead${en.open ? ' open' : ''}" data-seg="${en.start}">
+      <td colspan="7"><span class="gchev"></span>#${en.start}~#${en.end} · 已完成 ${en.count} 项（已推送）</td></tr>`;
+    const it = en.it;
     const badge = commitBadge(it);
     // 已推送 = 终态锁定（#46）：note 是提交态唯一留痕锚（commit+hash+已推送窗口），
     // 手滑改动会掉档徽标并经自动保存同步进记忆；title/note readonly（可选中复制），
@@ -229,8 +235,9 @@ function renderBoard() {
     }).join('');
     const badgeHtml = badge
       ? `<svg class="git-ico b-${badge[0]}" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><title>${esc(badge[1])}：${esc(badge[2])}</title>${GIT_ICONS[badge[0]]}</svg>` : '';
-    // done 行携带提交态类（b-pushed 等），供降权样式区分「已完成且已推送」的更强弱化（#42）
-    return `<tr data-id="${esc(it.id)}" class="s-${esc(it.status)}${badge ? ' b-' + esc(badge[0]) : ''}">
+    // done 行携带提交态类（b-pushed 等），供降权样式区分「已完成且已推送」的更强弱化（#42）；
+    // grp-off：所属组处于折叠态（#55），CSS display:none 隐藏
+    return `<tr data-id="${esc(it.id)}" class="s-${esc(it.status)}${badge ? ' b-' + esc(badge[0]) : ''}${en.off ? ' grp-off' : ''}">
       <td class="c-id mono">#${esc(it.id)}</td>
       <td><select class="cell-sel" data-field="priority" data-p="${esc(it.priority)}"${ro ? ' disabled title="已完成并推送，锁定编辑"' : ''}>${optP}</select></td>
       <td><span class="st-wrap"><select class="cell-sel" data-field="status" data-s="${esc(it.status)}"${ro ? ' disabled title="已完成并推送，锁定编辑"' : ''}>${optS}</select>${badgeHtml}</span></td>
@@ -294,6 +301,44 @@ function removeStickyHead(wrap) {
   const head = wrap.previousElementSibling;
   if (head && head.id === 'table-sticky-head') head.remove();
   wrap.classList.remove('cloned');
+}
+
+// 已完成折叠分组（#55）：终态已推送行按相邻编号差≤3 串联成段，段长≥5 才折叠——
+// 小段折叠收益低反而添一次点击；有筛选时全平铺（找东西时折叠是障碍）。
+// 展开段按项目存 localStorage（key 含 projectId），新组默认折叠
+function buildDoneGroups(rows, f) {
+  const hasFilter = f.priority.length || f.status.length || f.q.trim();
+  if (hasFilter) return rows.map(it => ({ it }));
+  const isPushed = it => { const b = commitBadge(it); return it.status === 'done' && b && b[0] === 'pushed'; };
+  const segs = [];
+  let cur = null;
+  for (const it of rows) {
+    const n = Number(it.id);
+    if (isPushed(it)) {
+      if (cur && n > cur.end && n - cur.end <= 3) { cur.end = n; cur.items.push(it); }
+      else { if (cur) segs.push(cur); cur = { start: n, end: n, items: [it] }; }
+    } else { if (cur) segs.push(cur); cur = null; }
+  }
+  if (cur) segs.push(cur);
+  const big = segs.filter(s => s.items.length >= 5);
+  if (!big.length) return rows.map(it => ({ it }));
+  let open = [];
+  try { open = JSON.parse(localStorage.getItem('bdesk-done-fold:' + S.active) || '[]'); } catch (_) {}
+  const openSet = new Set(open.filter(s => big.some(b => b.start === s)));
+  const segOf = new Map();
+  big.forEach(s => s.items.forEach(it => segOf.set(it.id, s)));
+  const out = [];
+  const emitted = new Set();
+  for (const it of rows) {
+    const s = segOf.get(it.id);
+    if (!s) { out.push({ it }); continue; }
+    if (!emitted.has(s.start)) {
+      emitted.add(s.start);
+      out.push({ head: true, start: s.start, end: s.end, count: s.items.length, open: openSet.has(s.start) });
+    }
+    out.push({ it, off: !openSet.has(s.start) });
+  }
+  return out;
 }
 
 function renderTrackBar() {
@@ -744,6 +789,18 @@ initMultiSelect($('#ms-status'), {
 // 桌面 hover 即恢复完整展示态；触屏无 hover，点行临时展开。展开为临时态（#46 修订）：
 // 鼠标离行或点击行外即自动收起，不再锁定——避免误点后行卡在展开态
 $('#items-body').addEventListener('click', e => {
+  // 组头点击 = 折叠/展开该段（#55），与行编辑逻辑互斥（组头不是数据行）
+  const gh = e.target.closest('tr.done-ghead');
+  if (gh) {
+    const seg = Number(gh.dataset.seg);
+    const key = 'bdesk-done-fold:' + S.active;
+    let ex = [];
+    try { ex = JSON.parse(localStorage.getItem(key) || '[]'); } catch (_) {}
+    ex = ex.includes(seg) ? ex.filter(x => x !== seg) : ex.concat(seg);
+    localStorage.setItem(key, JSON.stringify(ex));
+    renderBoard();
+    return;
+  }
   const tr = e.target.closest('tr.s-done.b-pushed');
   if (!tr || e.target.closest('select, input, button')) return;
   tr.classList.toggle('edit');
